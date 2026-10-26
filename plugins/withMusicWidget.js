@@ -1,6 +1,7 @@
 const {
   withAndroidManifest,
   withDangerousMod,
+  withMainApplication,
   withStringsXml,
   AndroidConfig,
 } = require("@expo/config-plugins");
@@ -39,9 +40,7 @@ const withWidgetFiles = (config) => {
         "src",
         "main",
         "java",
-        "com",
-        "own3r",
-        "player",
+        ...config.android.package.split("."),
         "widget"
       );
 
@@ -54,41 +53,44 @@ const withWidgetFiles = (config) => {
         appJava
       );
 
-      // Ensure MainApplication registers MusicWidgetPackage
-      const mainApplicationPath = path.join(
-        androidRoot,
-        "app",
-        "src",
-        "main",
-        "java",
-        "com",
-        "own3r",
-        "player",
-        "MainApplication.kt"
-      );
-
-      if (fs.existsSync(mainApplicationPath)) {
-        let content = fs.readFileSync(mainApplicationPath, "utf8");
-        const importStatement = "import com.own3r.player.widget.MusicWidgetPackage";
-        if (!content.includes(importStatement)) {
-          content = content.replace(
-            "package com.own3r.player\n",
-            `package com.own3r.player\n\n${importStatement}\n`
-          );
-        }
-        const packageCall = "packages.add(MusicWidgetPackage())";
-        if (!content.includes(packageCall)) {
-          content = content.replace(
-            "val packages = PackageList(this).packages",
-            `val packages = PackageList(this).packages\n            ${packageCall}`
-          );
-        }
-        fs.writeFileSync(mainApplicationPath, content, "utf8");
-      }
-
       return config;
     },
   ]);
+};
+
+const withWidgetPackage = (config) => {
+  return withMainApplication(config, (config) => {
+    if (config.modResults.language !== "kt") {
+      throw new Error("The music widget requires a Kotlin MainApplication.");
+    }
+    let content = config.modResults.contents;
+    const importStatement = `import ${config.android.package}.widget.MusicWidgetPackage`;
+    if (!content.includes(importStatement)) {
+      content = content.replace(
+        /^(package [^\r\n]+)(\r?\n)/m,
+        `$1$2${importStatement}$2`
+      );
+    }
+    if (!content.includes("add(MusicWidgetPackage())")) {
+      const packageVariable = /val packages = PackageList\(this\)\.packages(\r?\n)/;
+      const packageApply = /PackageList\(this\)\.packages\.apply\s*\{/;
+      if (packageVariable.test(content)) {
+        content = content.replace(
+          packageVariable,
+          "$&            packages.add(MusicWidgetPackage())$1"
+        );
+      } else if (packageApply.test(content)) {
+        content = content.replace(
+          packageApply,
+          "$&\n              add(MusicWidgetPackage())"
+        );
+      } else {
+        throw new Error("Could not register MusicWidgetPackage in MainApplication.");
+      }
+    }
+    config.modResults.contents = content;
+    return config;
+  });
 };
 
 const withWidgetManifest = (config) => {
@@ -105,7 +107,7 @@ const withWidgetManifest = (config) => {
       (r) =>
         r.$ &&
         (r.$["android:name"] === ".widget.MusicWidgetProvider" ||
-          r.$["android:name"] === "com.own3r.player.widget.MusicWidgetProvider")
+          r.$["android:name"] === "co.za.chefu.muzalo.widget.MusicWidgetProvider")
     );
 
     if (!hasReceiver) {
@@ -124,17 +126,17 @@ const withWidgetManifest = (config) => {
               },
               {
                 $: {
-                  "android:name": "com.own3r.player.ACTION_WIDGET_PREV",
+                  "android:name": "co.za.chefu.muzalo.ACTION_WIDGET_PREV",
                 },
               },
               {
                 $: {
-                  "android:name": "com.own3r.player.ACTION_WIDGET_PLAY_PAUSE",
+                  "android:name": "co.za.chefu.muzalo.ACTION_WIDGET_PLAY_PAUSE",
                 },
               },
               {
                 $: {
-                  "android:name": "com.own3r.player.ACTION_WIDGET_NEXT",
+                  "android:name": "co.za.chefu.muzalo.ACTION_WIDGET_NEXT",
                 },
               },
             ],
@@ -179,5 +181,7 @@ const withWidgetStrings = (config) => {
 };
 
 module.exports = function withMusicWidget(config) {
-  return withWidgetFiles(withWidgetManifest(withWidgetStrings(config)));
+  return withWidgetPackage(
+    withWidgetFiles(withWidgetManifest(withWidgetStrings(config)))
+  );
 };

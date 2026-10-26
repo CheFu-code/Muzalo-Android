@@ -7,6 +7,27 @@ Enjoy your favorite songs with synced lyrics, manage playlists, and edit lyrics 
 
 ---
 
+## Android development APK with GitHub Actions
+
+The **Android development APK** workflow runs on pushes to `main` or `master`,
+on pull requests, and manually from **Actions > Android development APK > Run workflow**.
+Documentation-only and editor-settings-only pushes and pull requests are skipped.
+It generates the Android project with Expo Prebuild and builds a debug APK with
+`expo-dev-client` included. No Expo token, EAS build credits, or release signing secrets are needed.
+
+Download `muzalo-android-development-<run number>` from the run's **Artifacts** section,
+extract the ZIP, and install the APK on your Android device or emulator. Then start
+Metro on your computer with `npm start` and open the installed Muzalo development client.
+Your phone and computer must be able to reach each other over the network; use
+`npx expo start --dev-client --tunnel` if a LAN connection is unavailable.
+This development APK needs Metro to load the app.
+
+On runners with at least 14 GB of RAM, the workflow allows an 8 GB Gradle heap,
+a 2 GB Kotlin daemon heap, a 4 GB Node.js heap, and up to four Gradle workers.
+Smaller runners use 3 GB / 1 GB / 2 GB heaps and up to two workers. These are
+heap limits, not preallocated memory. Gradle parallel execution, the build cache,
+and npm caching are enabled. Memory settings apply only to CI. APK artifacts expire after 14 days.
+
 ## 🚀 Features
 
 ### 🎧 Core Player

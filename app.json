@@ -1,76 +1,74 @@
 {
-  "expo": {
-    "name": "Music Player",
-    "slug": "Music-Player",
-    "version": "1.0.1",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "music-player",
-    "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
-    "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "UIBackgroundModes": [
-          "audio"
-        ]
-      }
-    },
-    "android": {
-      "permissions": [
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "INTERNET",
-        "MODIFY_AUDIO_SETTINGS",
-        "WAKE_LOCK",
-        "FOREGROUND_SERVICE"
-      ],
-      "package": "com.own3r.player",
-      "versionCode": 1,
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000000"
-      },
-      "edgeToEdgeEnabled": true
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
-    "plugins": [
-      [
-        "expo-navigation-bar",
-        {
-          "position": "absolute",
-          "visibility": "visible",
-          "behavior": "inset-swipe",
-          "backgroundColor": "#000000"
+    "expo": {
+        "name": "Muzalo",
+        "slug": "Muzalo",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/images/icon.png",
+        "scheme": "music-player",
+        "userInterfaceStyle": "dark",
+        "newArchEnabled": false,
+        "ios": {
+            "supportsTablet": true,
+            "infoPlist": {
+                "UIBackgroundModes": ["audio"]
+            }
+        },
+        "android": {
+            "permissions": [
+                "READ_EXTERNAL_STORAGE",
+                "WRITE_EXTERNAL_STORAGE",
+                "INTERNET",
+                "MODIFY_AUDIO_SETTINGS",
+                "WAKE_LOCK",
+                "FOREGROUND_SERVICE"
+            ],
+            "package": "co.za.chefu.muzalo",
+            "versionCode": 1,
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/images/adaptive-icon.png",
+                "backgroundColor": "#000000"
+            },
+            "edgeToEdgeEnabled": true
+        },
+        "web": {
+            "bundler": "metro",
+            "output": "static",
+            "favicon": "./assets/images/favicon.png"
+        },
+        "plugins": [
+            [
+                "expo-navigation-bar",
+                {
+                    "position": "absolute",
+                    "visibility": "visible",
+                    "behavior": "inset-swipe",
+                    "backgroundColor": "#000000"
+                }
+            ],
+            "expo-router",
+            [
+                "expo-splash-screen",
+                {
+                    "image": "./assets/images/splash-icon.png",
+                    "imageWidth": 200,
+                    "resizeMode": "contain",
+                    "backgroundColor": "#000000"
+                }
+            ],
+            "expo-audio",
+            "react-native-edge-to-edge",
+            "expo-sqlite",
+            "./plugins/withMusicWidget"
+        ],
+        "experiments": {
+            "typedRoutes": true
+        },
+        "extra": {
+            "router": {},
+            "eas": {
+                "projectId": "0db91206-d462-411b-a108-cb7551aa5f5e"
+            }
         }
-      ],
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#000000"
-        }
-      ],
-      "expo-audio",
-      "react-native-edge-to-edge",
-      "expo-sqlite",
-      "./plugins/withMusicWidget"
-    ],
-    "experiments": {
-      "typedRoutes": true
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "0db91206-d462-411b-a108-cb7551aa5f5e"
-      }
     }
-  }
 }

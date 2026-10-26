@@ -1,4 +1,4 @@
-package com.own3r.player.widget
+package co.za.chefu.muzalo.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -11,8 +11,8 @@ import android.view.KeyEvent
 import android.widget.RemoteViews
 import com.facebook.react.ReactApplication
 import com.facebook.react.modules.core.DeviceEventManagerModule
-import com.own3r.player.MainActivity
-import com.own3r.player.R
+import co.za.chefu.muzalo.MainActivity
+import co.za.chefu.muzalo.R
 
 class MusicWidgetProvider : AppWidgetProvider() {
 
@@ -76,9 +76,9 @@ class MusicWidgetProvider : AppWidgetProvider() {
         const val KEY_COVER_ART = "coverArt"
         const val KEY_IS_PLAYING = "isPlaying"
 
-        const val ACTION_WIDGET_PREV = "com.own3r.player.ACTION_WIDGET_PREV"
-        const val ACTION_WIDGET_PLAY_PAUSE = "com.own3r.player.ACTION_WIDGET_PLAY_PAUSE"
-        const val ACTION_WIDGET_NEXT = "com.own3r.player.ACTION_WIDGET_NEXT"
+        const val ACTION_WIDGET_PREV = "co.za.chefu.muzalo.ACTION_WIDGET_PREV"
+        const val ACTION_WIDGET_PLAY_PAUSE = "co.za.chefu.muzalo.ACTION_WIDGET_PLAY_PAUSE"
+        const val ACTION_WIDGET_NEXT = "co.za.chefu.muzalo.ACTION_WIDGET_NEXT"
 
         fun updateAllWidgets(
             context: Context,

@@ -1,0 +1,119 @@
+name: Android development APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - '**/*.md'
+      - '.vscode/**'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '.vscode/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-development-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build development client
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Configure build resources
+        id: resources
+        run: |
+          memory_mb=$(awk '/MemTotal/ { print int($2 / 1024) }' /proc/meminfo)
+          workers=$(nproc)
+          # Public Linux runners have 16 GB RAM and 4 CPUs. Keep room for
+          # the OS, native compilers, JVM overhead, and other build processes.
+          if (( memory_mb >= 14000 )); then
+            gradle_heap=8192
+            kotlin_heap=2048
+            node_heap=4096
+            (( workers <= 4 )) || workers=4
+          else
+            # Also support the smaller standard private-repository runners.
+            gradle_heap=3072
+            kotlin_heap=1024
+            node_heap=2048
+            (( workers <= 2 )) || workers=2
+          fi
+          {
+            echo "GRADLE_HEAP_MB=$gradle_heap"
+            echo "KOTLIN_HEAP_MB=$kotlin_heap"
+            echo "GRADLE_WORKERS=$workers"
+          } >> "$GITHUB_ENV"
+          # GitHub blocks setting NODE_OPTIONS through GITHUB_ENV.
+          echo "node_heap=$node_heap" >> "$GITHUB_OUTPUT"
+          echo "Runner: ${memory_mb} MB RAM, $(nproc) CPUs"
+          echo "Heap limits: Gradle ${gradle_heap} MB, Kotlin ${kotlin_heap} MB, Node ${node_heap} MB; workers: $workers"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        env:
+          NODE_OPTIONS: --max-old-space-size=${{ steps.resources.outputs.node_heap }}
+        run: npm ci
+
+      - name: Generate Android project
+        env:
+          NODE_OPTIONS: --max-old-space-size=${{ steps.resources.outputs.node_heap }}
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Build development APK
+        working-directory: android
+        env:
+          NODE_OPTIONS: --max-old-space-size=${{ steps.resources.outputs.node_heap }}
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug \
+            --no-daemon \
+            --build-cache \
+            --parallel \
+            --max-workers="$GRADLE_WORKERS" \
+            --stacktrace \
+            --console=plain \
+            "-Dorg.gradle.jvmargs=-Xmx${GRADLE_HEAP_MB}m -XX:MaxMetaspaceSize=1024m -XX:+UseParallelGC -Dfile.encoding=UTF-8" \
+            "-Pkotlin.daemon.jvmargs=-Xmx${KOTLIN_HEAP_MB}m"
+
+      - name: Upload development APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: muzalo-android-development-${{ github.run_number }}
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

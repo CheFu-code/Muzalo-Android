@@ -1,4 +1,4 @@
-package com.own3r.player.widget
+package co.za.chefu.muzalo.widget
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
