@@ -1,6 +1,6 @@
 import { muzaloTheme as c } from "@/constants/tokens";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useBackNavigation } from "@/hooks/useBackNavigation";
 import React, { ComponentProps, ReactNode, useState } from "react";
 import {
     ActivityIndicator,
@@ -9,11 +9,11 @@ import {
     Text,
     TextInput,
     TextInputProps,
-    TouchableOpacity,
     View,
     ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { GestureDetector, Pressable } from "react-native-gesture-handler";
 
 export type AppIcon = ComponentProps<typeof Ionicons>["name"];
 
@@ -52,18 +52,19 @@ export function IconButton({
     style?: ViewStyle;
 }) {
     return (
-        <TouchableOpacity
+        <Pressable
             accessibilityRole="button"
             accessibilityLabel={label}
             accessibilityState={{ disabled, selected: active }}
             disabled={disabled}
             onPress={onPress}
-            activeOpacity={0.7}
-            style={[
+            hitSlop={8}
+            style={({ pressed }) => [
                 ui.iconButton,
                 active && { backgroundColor: c.accentSoft },
                 disabled && { opacity: 0.4 },
                 style,
+                pressed && !disabled && { opacity: 0.7 },
             ]}
         >
             <Ionicons
@@ -71,7 +72,7 @@ export function IconButton({
                 size={22}
                 color={color ?? (active ? c.accent : c.text)}
             />
-        </TouchableOpacity>
+        </Pressable>
     );
 }
 
@@ -80,27 +81,47 @@ export function ScreenHeader({
     right,
     onBack,
     close = false,
+    dragGesture,
 }: {
     title: string;
     right?: ReactNode;
     onBack?: () => void;
     close?: boolean;
+    dragGesture?: ComponentProps<typeof GestureDetector>["gesture"];
 }) {
-    const router = useRouter();
+    const goBack = useBackNavigation(onBack);
+    const heading = (
+        <Text
+            numberOfLines={1}
+            accessibilityRole="header"
+            style={ui.headerTitle}
+        >
+            {title}
+        </Text>
+    );
     return (
         <View style={ui.header}>
             <IconButton
                 icon={close ? "chevron-down" : "chevron-back"}
                 label={close ? "Close screen" : "Go back"}
-                onPress={onBack ?? (() => router.back())}
+                onPress={goBack}
             />
-            <Text
-                numberOfLines={1}
-                accessibilityRole="header"
-                style={ui.headerTitle}
-            >
-                {title}
-            </Text>
+            {dragGesture ? (
+                <GestureDetector gesture={dragGesture}>
+                    <View
+                        collapsable={false}
+                        style={{
+                            flex: 1,
+                            minWidth: 0,
+                            minHeight: 44,
+                            flexDirection: "row",
+                            alignItems: "center",
+                        }}
+                    >
+                        {heading}
+                    </View>
+                </GestureDetector>
+            ) : heading}
             <View style={{ minWidth: 44, alignItems: "flex-end" }}>
                 {right}
             </View>
@@ -130,7 +151,7 @@ export function ActionButton({
               ? c.danger
               : c.text;
     return (
-        <TouchableOpacity
+        <Pressable
             accessibilityRole="button"
             accessibilityLabel={label}
             accessibilityState={{
@@ -139,8 +160,7 @@ export function ActionButton({
             }}
             disabled={disabled || loading}
             onPress={onPress}
-            activeOpacity={0.8}
-            style={[
+            style={({ pressed }) => [
                 ui.button,
                 {
                     backgroundColor:
@@ -152,6 +172,7 @@ export function ActionButton({
                     borderColor: variant === "primary" ? c.accent : c.border,
                 },
                 (disabled || loading) && { opacity: 0.5 },
+                pressed && !disabled && !loading && { opacity: 0.8 },
             ]}
         >
             {loading ? (
@@ -170,7 +191,7 @@ export function ActionButton({
             >
                 {label}
             </Text>
-        </TouchableOpacity>
+        </Pressable>
     );
 }
 

@@ -11,6 +11,8 @@
     "lint": "expo lint",
     "test:audio": "node --test tests/audio-formats.test.cjs tests/audio-metadata.test.cjs tests/audio-downloads.test.cjs",
     "test:artists": "node --test tests/artists.test.cjs",
+    "test:library": "node --test tests/library-scan.test.cjs",
+    "test:playback": "node --test tests/playback.test.cjs tests/queue-reorder.test.cjs tests/playback-service.test.cjs tests/player-persistence.test.cjs tests/library-controls.test.cjs tests/database-writes.test.cjs",
     "codegen": "react-native codegen",
     "test:lyrics": "node --test tests/lyrics.test.cjs tests/lyrics-store.test.cjs"
   },

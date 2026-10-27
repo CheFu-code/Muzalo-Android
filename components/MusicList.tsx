@@ -4,15 +4,21 @@ import {
     TAB_BAR_HEIGHT,
     muzaloTheme,
 } from "@/constants/tokens";
+import { librarySortLabels, selectLibraryTracks } from "@/tools/libraryControls";
+import { useLibraryPreferences } from "@/tools/store/useLibraryPreferences";
+import { useLibraryStore } from "@/tools/store/useLibraryStore";
 import { usePlayerStore } from "@/tools/store/usePlayerStore";
+import { syncLibrary } from "@/tools/syncLibrary";
 import { Song } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Linking, Text, TextInput, TouchableOpacity, View } from "react-native";
 import {
     SafeAreaView,
     useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import LibraryControls from "./LibraryControls";
+import { ActionButton } from "./ui";
 
 interface Props {
     currentSong: Song | null;
@@ -20,17 +26,15 @@ interface Props {
 
 const MusicList = ({ currentSong }: Props) => {
     const files = usePlayerStore((s) => s.files);
+    const preferences = useLibraryPreferences();
+    const { scanning, access, canAskAgain, error } = useLibraryStore();
+    const scan = () => { void syncLibrary({ requestPermission: true }); };
     const [search, setSearch] = useState("");
     const insets = useSafeAreaInsets();
     const filteredTracks = useMemo(() => {
-        const term = search.trim().toLowerCase();
-        if (!term) return files;
-        return files.filter(
-            (track) =>
-                track.title?.toLowerCase().includes(term) ||
-                track.artist?.toLowerCase().includes(term),
-        );
-    }, [files, search]);
+        return selectLibraryTracks(files, preferences, search);
+    }, [files, search, preferences]);
+    const filtered = !!preferences.folder || !!preferences.excludedFolders.length || preferences.hideShort || preferences.hideNonMusic;
 
     return (
         <SafeAreaView
@@ -63,15 +67,15 @@ const MusicList = ({ currentSong }: Props) => {
                     >
                         Your music
                     </Text>
-                    <Text style={{ color: muzaloTheme.muted, fontSize: 12 }}>
-                        {filteredTracks.length}{" "}
-                        {search.trim()
-                            ? "results"
-                            : filteredTracks.length === 1
-                              ? "track"
-                              : "tracks"}
-                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        
+                        
+                        <LibraryControls songs={files} />
+                    </View>
                 </View>
+                <Text numberOfLines={1} style={{ color: muzaloTheme.muted, fontSize: 12, marginBottom: 12 }}>
+                    {preferences.folder?.split("/").pop() || "All folders"} · {librarySortLabels[preferences.sort]}{filtered ? " · Filtered" : ""}
+                </Text>
                 <View
                     style={{
                         flexDirection: "row",
@@ -128,6 +132,21 @@ const MusicList = ({ currentSong }: Props) => {
                     )}
                 </View>
             </View>
+            {access === "denied" || error ? (
+                <View style={{ paddingHorizontal: 20, paddingBottom: 16, gap: 12 }}>
+                    <Text style={{ color: muzaloTheme.muted, lineHeight: 22 }}>
+                        {access === "denied"
+                            ? "Allow music and audio access to find songs across your device."
+                            : error}
+                    </Text>
+                    <ActionButton
+                        label={access === "denied" ? (canAskAgain ? "Allow audio access" : "Open app settings") : "Try scanning again"}
+                        onPress={access === "denied" && !canAskAgain ? () => { void Linking.openSettings(); } : scan}
+                        loading={scanning}
+                        variant="secondary"
+                    />
+                </View>
+            ) : null}
             <TracksList
                 tracks={filteredTracks}
                 extraData={currentSong?.id}
@@ -168,7 +187,7 @@ const MusicList = ({ currentSong }: Props) => {
                         >
                             {search.trim()
                                 ? "No matching tracks"
-                                : "A little quiet in here"}
+                                : scanning ? "Finding your music" : "A little quiet in here"}
                         </Text>
                         <Text
                             style={{
@@ -181,8 +200,16 @@ const MusicList = ({ currentSong }: Props) => {
                         >
                             {search.trim()
                                 ? "Try another song title or artist name."
-                                : "Your music will appear here when Muzalo scans the folder you allow it to access."}
+                                : access === "unavailable"
+                                  ? "Device music scanning is currently available on Android."
+                                  : access === "denied"
+                                    ? "Your songs stay on your device. Grant audio access above to show them here."
+                                    : scanning
+                                      ? "Songs will appear as Muzalo scans your device's audio library."
+                                      : filtered ? "No songs match your library filters. Reset them to show your music again."
+                                      : "No supported songs were found in your device's audio library. Add music to your device, then tap Scan for music."}
                         </Text>
+                        {filtered && <ActionButton label="Reset filters" variant="secondary" onPress={preferences.reset} />}
                     </View>
                 }
                 scrollEventThrottle={16}

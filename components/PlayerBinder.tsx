@@ -1,6 +1,6 @@
-import { usePlayerStore, usePlaylistStore } from "@/tools/store/usePlayerStore";
+import { playerSessionStorage, usePlayerStore, usePlaylistStore } from "@/tools/store/usePlayerStore";
 import { updateMusicWidget } from "@/tools/services/widgetService";
-import { syncFolder } from "@/tools/syncFolder";
+import { syncLibrary } from "@/tools/syncLibrary";
 import { useEffect } from "react";
 import { AppState } from "react-native";
 import TrackPlayer from "react-native-track-player";
@@ -17,27 +17,13 @@ export default function PlayerBinder() {
   }, [currentSong, isPlaying]);
 
   useEffect(() => {
-    let appStateSubscription: any;
+    let active = true;
+    let previousState = AppState.currentState;
 
     const initialize = async () => {
       try {
-        // const folderUri = await AsyncStorage.getItem("musicDirectoryUri");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await syncFolder();
-
-        await loadPlaylists("all");
-
-        // ✅ Auto-sync on app resume
-        appStateSubscription = AppState.addEventListener(
-          "change",
-          async (state) => {
-            if (state === "active") {
-              console.log("🔄 App resumed, syncing folder...");
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-              await syncFolder();
-            }
-          }
-        );
+        await syncLibrary();
+        if (active) await loadPlaylists("all");
       } catch (err) {
         console.error("❌ Error initializing player:", err);
       }
@@ -45,8 +31,16 @@ export default function PlayerBinder() {
 
     initialize();
 
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") void playerSessionStorage.flush();
+      const resumed = previousState !== "active" && state === "active";
+      previousState = state;
+      if (resumed) void syncLibrary();
+    });
+
     return () => {
-      appStateSubscription?.remove?.();
+      active = false;
+      appStateSubscription.remove();
     };
   }, [loadPlaylists]);
 

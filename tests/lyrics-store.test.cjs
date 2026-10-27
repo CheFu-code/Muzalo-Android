@@ -8,9 +8,10 @@ function createStore(db) {
     setItem: () => {},
     removeItem: () => {},
   };
-  const native = { addEventListener: () => ({ remove() {} }) };
+  const native = { addEventListener: () => ({ remove() {} }), getQueue: async () => [] };
   return load(path.join(__dirname, "../tools/store/usePlayerStore.ts"), {
     "@/tools/db": db,
+    "expo-file-system": {},
     "@/tools/saveCurrnetSong": () => {},
     "@react-native-async-storage/async-storage": storage,
     "react-native-track-player": {
@@ -57,6 +58,15 @@ test("a lookup can save both plain and timed lyrics", async () => {
   await store.getState().setLyrics("one", "New", "[00:02] New");
   assert.deepEqual(saved, [["one", "New", "[00:02] New"]]);
   assert.equal(store.getState().currentSong.syncedLyrics, "[00:02] New");
+});
+
+test("failed metadata writes leave the active track, library and queue unchanged", async () => {
+  const store = createStore({ editSong: async () => { throw Error("Disk full"); } });
+  store.setState({ currentSong: track, files: [track], queue: [track] });
+  await assert.rejects(store.getState().editSong("one", "New title", "New artist"), /Disk full/);
+  assert.equal(store.getState().currentSong, track);
+  assert.equal(store.getState().files[0], track);
+  assert.equal(store.getState().queue[0], track);
 });
 test("saving timing refreshes active playback, library and queue after persistence", async () => {
   const saved = [];

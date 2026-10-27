@@ -3,10 +3,22 @@ import TrackPlayer, {
   Capability,
 } from "react-native-track-player";
 
-export async function setupPlayer() {
-  await TrackPlayer.setupPlayer();
+let initialization: Promise<void> | null = null;
+
+export function setupPlayer() {
+  if (initialization) return initialization;
+  initialization = initialize().catch((error) => { initialization = null; throw error; });
+  return initialization;
+}
+
+async function initialize() {
+  try { await TrackPlayer.setupPlayer(); }
+  catch (error) {
+    if ((error as { code?: string }).code !== "player_already_initialized") throw error;
+  }
 
   await TrackPlayer.updateOptions({
+    progressUpdateEventInterval: 1,
     android: {
       appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback,
     },

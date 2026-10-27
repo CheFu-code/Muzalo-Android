@@ -145,7 +145,7 @@ const TracksListItem = memo(
             >
               <View
                 style={{
-                  width: 36,
+                  width: 44,
                   height: 44,
                   alignItems: "center",
                   justifyContent: "center",

@@ -9,19 +9,22 @@ export default function SongScreen({
   song,
   loading,
   error,
+  headerRight,
   children,
 }: {
   title: string;
   song: Song | null;
   loading: boolean;
   error?: string | null;
+  headerRight?: ReactNode;
   children: ReactNode;
 }) {
-  if (loading) return <LoadingScreen />;
   return (
     <Screen edges={["top", "left", "right", "bottom"]}>
-      <ScreenHeader title={title} />
-      {!song ? (
+      <ScreenHeader title={title} right={!loading && song ? headerRight : undefined} />
+      {loading ? (
+        <LoadingScreen />
+      ) : !song ? (
         <EmptyState
           title="Track unavailable"
           message={error || "This track could not be found in your library."}

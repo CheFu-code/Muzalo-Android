@@ -39,7 +39,6 @@ export default function PlayingScreen() {
     const [contentHeight, setContentHeight] = useState(0);
     const [artworkSpace, setArtworkSpace] = useState({ width: 0, height: 0 });
     const song = usePlayerStore((s) => s.currentSong);
-    const queue = usePlayerStore((s) => s.queue);
     const showLyrics = usePlayerStore((s) => s.showLyrics);
     const toggleLyrics = usePlayerStore((s) => s.toggleShowLyrics);
     const setLyrics = usePlayerStore((s) => s.setLyrics);
@@ -53,10 +52,6 @@ export default function PlayingScreen() {
         0,
         Math.min(artworkSpace.width, artworkSpace.height, 360),
     );
-    const index =
-        queue.findIndex((t) =>
-            song?.id ? t.id === song.id : t.uri === song?.uri,
-        ) + 1;
     const fetchLyrics = async () => {
         if (fetching || !song) return;
         setFetching(true);
@@ -315,13 +310,7 @@ export default function PlayingScreen() {
                         />
                     </View>
                     <View style={{ flexShrink: 0 }}>
-                        <ProgressBar
-                            queueIndex={
-                                index && queue.length
-                                    ? index + " / " + queue.length
-                                    : 0
-                            }
-                        />
+                        <ProgressBar />
                     </View>
                     <View
                         style={[

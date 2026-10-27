@@ -59,6 +59,9 @@ const TrackShortcutsMenu = ({
         (state) =>
             track.id || state.files.find((song) => song.uri === track.uri)?.id,
     );
+    const isCurrentTrack = usePlayerStore((state) => !!state.currentSong && (
+        (!!trackId && state.currentSong.id === trackId) || state.currentSong.uri === track.uri
+    ));
     const toggleFavorite = usePlaylistStore((state) => state.toggleFavorite);
     const removeTrackFromPlaylist = usePlaylistStore(
         (state) => state.removeTrackFromPlaylist,
@@ -67,6 +70,8 @@ const TrackShortcutsMenu = ({
         state.isFavorite(trackId || ""),
     );
     const setLyrics = usePlayerStore((state) => state.setLyrics);
+    const playNext = usePlayerStore((state) => state.playNext);
+    const addToQueue = usePlayerStore((state) => state.addToQueue);
     const dismiss = () => setVisible(false);
 
     const runAction = async (key: string, action: () => Promise<unknown>) => {
@@ -88,6 +93,18 @@ const TrackShortcutsMenu = ({
     };
 
     const actions: MenuAction[] = [
+        ...(!isCurrentTrack ? [{
+            key: "play-next",
+            label: "Play next",
+            icon: "play-forward-outline" as const,
+            onPress: () => runAction("play-next", () => playNext({ ...track, id: trackId })),
+        }] : []),
+        {
+            key: "queue",
+            label: "Add to queue",
+            icon: "list-outline",
+            onPress: () => runAction("queue", () => addToQueue([{ ...track, id: trackId }])),
+        },
         {
             key: "lyrics",
             label:
@@ -200,6 +217,12 @@ const TrackShortcutsMenu = ({
                 accessibilityLabel={`More options for ${track.title || "this track"}`}
                 accessibilityState={{ expanded: visible }}
                 hitSlop={6}
+                style={{
+                    minWidth: 44,
+                    minHeight: 44,
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
                 onPress={(event) => {
                     event.stopPropagation();
                     setVisible(true);
@@ -306,7 +329,7 @@ const TrackShortcutsMenu = ({
                                 onPress={dismiss}
                                 hitSlop={6}
                                 style={{
-                                    width: 36,
+                                    width: 44,
                                     height: 44,
                                     alignItems: "center",
                                     justifyContent: "center",

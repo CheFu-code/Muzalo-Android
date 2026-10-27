@@ -1,8 +1,9 @@
 import PlayerBinder from "@/components/PlayerBinder";
+import PlaybackIssueDialog from "@/components/PlaybackIssueDialog";
 import { muzaloTheme } from "@/constants/tokens";
 import { Stack } from "expo-router";
-import { useEffect } from "react";
-import { I18nManager, StatusBar } from "react-native";
+import { useEffect, useState } from "react";
+import { I18nManager, Platform, StatusBar } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -18,6 +19,7 @@ import playbackService from "@/service";
 TrackPlayer.registerPlaybackService(() => playbackService);
 
 export default function Layout() {
+  const [databaseReady, setDatabaseReady] = useState(false);
   const loadLibrary = usePlayerStore((s) => s.loadLibrary);
   const loadFavorites = usePlaylistStore((s) => s.loadFavorites);
 
@@ -25,6 +27,7 @@ export default function Layout() {
     async function initialize() {
       try {
         await initDB();
+        setDatabaseReady(true);
       } catch (error) {
         console.error("Error initializing database:", error);
         toast.error(`Error initializing database: ${error}`);
@@ -36,20 +39,19 @@ export default function Layout() {
   }, []);
 
   useEffect(() => {
+    if (!databaseReady) return;
     requestAnimationFrame(() => {
       (async () => {
         await loadLibrary();
         await loadFavorites();
       })();
     });
-  }, [loadFavorites, loadLibrary]);
+  }, [databaseReady, loadFavorites, loadLibrary]);
 
   useEffect(() => {
-    setupPlayer();
-
-    return () => {
-      TrackPlayer.reset();
-    };
+    void setupPlayer().catch(() => {
+      toast.error("The audio player could not start. Close and reopen Muzalo to try again.");
+    });
   }, []);
 
   if (I18nManager.isRTL) {
@@ -62,7 +64,7 @@ export default function Layout() {
       <GestureHandlerRootView
         style={{ flex: 1, backgroundColor: muzaloTheme.background }}
       >
-        <PlayerBinder />
+        {databaseReady && <PlayerBinder />}
         {/* <SafeAreaView style={{ flex: 1 }}> */}
         <Stack
           screenOptions={{
@@ -77,9 +79,8 @@ export default function Layout() {
           <Stack.Screen
             name="Playing"
             options={{
-              presentation: "transparentModal",
-              gestureEnabled: true,
-              gestureDirection: "vertical",
+              presentation: Platform.OS === "android" ? "modal" : "transparentModal",
+              gestureEnabled: false,
               animationDuration: 100,
               headerShown: false,
               animation: "slide_from_bottom",
@@ -88,9 +89,8 @@ export default function Layout() {
           <Stack.Screen
             name="Queue"
             options={{
-              presentation: "transparentModal",
-              gestureEnabled: true,
-              gestureDirection: "vertical",
+              presentation: Platform.OS === "android" ? "modal" : "transparentModal",
+              gestureEnabled: false,
               animationDuration: 100,
               headerShown: false,
               animation: "slide_from_bottom",
@@ -99,9 +99,8 @@ export default function Layout() {
           <Stack.Screen
             name="(modals)/addToPlaylist"
             options={{
-              presentation: "transparentModal",
-              gestureEnabled: true,
-              gestureDirection: "vertical",
+              presentation: Platform.OS === "android" ? "modal" : "transparentModal",
+              gestureEnabled: false,
               animationDuration: 100,
               headerShown: false,
               animation: "slide_from_bottom", // smoother exit
@@ -143,6 +142,7 @@ export default function Layout() {
         </Stack>
         <StatusBar barStyle="light-content" />
         <Toaster position="top-center" richColors />
+        <PlaybackIssueDialog />
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );

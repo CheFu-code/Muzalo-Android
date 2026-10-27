@@ -88,3 +88,4 @@ yarn-error.*
 # @end expo-cli
 *.md
 !README.md
+!docs/device-music-library.md

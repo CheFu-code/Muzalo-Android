@@ -151,7 +151,7 @@ export async function addSongsBatch(songs: Song[]) {
   const db = await getDB();
   await db.withExclusiveTransactionAsync(async (txn) => {
     const statement = await txn.prepareAsync(
-      `INSERT OR REPLACE INTO songs
+      `INSERT OR IGNORE INTO songs
         (id, uri, filename, title, artist, album, duration, coverArt, size, date, year, lyrics, syncedLyrics)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
@@ -178,6 +178,29 @@ export async function addSongsBatch(songs: Song[]) {
       await statement.finalizeAsync();
     }
   });
+}
+
+export async function updateSongUri(id: string, uri: string) {
+  const db = await getDB();
+  await db.runAsync("UPDATE songs SET uri = ? WHERE id = ?", [uri, id]);
+}
+
+export async function relinkSong(id: string, uri: string, filename: string, existingId?: string): Promise<string | null> {
+  const db = await getDB();
+  let mergedId: string | null = null;
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    const target = await txn.getFirstAsync<{ id: string }>("SELECT id FROM songs WHERE id = ?", [id]);
+    if (!target) throw new Error("This track is no longer in your library.");
+    const duplicate = await txn.getFirstAsync<{ id: string }>("SELECT id FROM songs WHERE (uri = ? OR id = ?) AND id != ?", [uri, existingId ?? null, id]);
+    if (duplicate) {
+      mergedId = duplicate.id;
+      await txn.runAsync("INSERT OR IGNORE INTO playlist_songs (playlistId, songId) SELECT playlistId, ? FROM playlist_songs WHERE songId = ?", [id, duplicate.id]);
+      await txn.runAsync("UPDATE songs SET playCount = COALESCE(playCount, 0) + COALESCE((SELECT playCount FROM songs WHERE id = ?), 0), lastPlayedAt = MAX(COALESCE(lastPlayedAt, 0), COALESCE((SELECT lastPlayedAt FROM songs WHERE id = ?), 0)) WHERE id = ?", [duplicate.id, duplicate.id, id]);
+      await txn.runAsync("DELETE FROM songs WHERE id = ?", [duplicate.id]);
+    }
+    await txn.runAsync("UPDATE songs SET uri = ?, localUri = NULL, filename = ? WHERE id = ?", [uri, filename, id]);
+  });
+  return mergedId;
 }
 
 export async function getSong(songId: string): Promise<Song | undefined> {
@@ -232,16 +255,12 @@ export async function editSong(
   album?: string,
   year?: string
 ) {
-  try {
-    const db = await getDB();
-    await db.runAsync(
-      "UPDATE songs SET title = ?, artist = ?, album = ?, year = ? WHERE id = ?",
-      [title, artist, album || null, year || null, songId]
-    );
-  } catch (error) {
-    console.log(error);
-    toast.error(`Error: ${error}`);
-  }
+  const db = await getDB();
+  const result = await db.runAsync(
+    "UPDATE songs SET title = ?, artist = ?, album = ?, year = ? WHERE id = ?",
+    [title, artist, album || null, year || null, songId]
+  );
+  if (!result.changes) throw new Error("The track no longer exists in your library.");
 }
 
 export async function addLyrics(
@@ -250,10 +269,11 @@ export async function addLyrics(
   syncedLyrics: string | null
 ) {
   const db = await getDB();
-  await db.runAsync(
+  const result = await db.runAsync(
     "UPDATE songs SET lyrics = ?, syncedLyrics = ? WHERE id = ?",
     [lyrics, syncedLyrics, songId]
   );
+  if (!result.changes) throw new Error("The track no longer exists in your library.");
 }
 
 export async function incrementPlayCountInDB(
@@ -280,29 +300,26 @@ export async function updateSongSyncedLyrics(
   syncedLyrics: string
 ): Promise<void> {
   if (!id) {
-    return;
+    throw new Error("A track is required to save lyrics.");
   }
 
   const db = await getDB();
-  await db.runAsync(`UPDATE songs SET syncedLyrics = ? WHERE id = ?`, [
+  const result = await db.runAsync(`UPDATE songs SET syncedLyrics = ? WHERE id = ?`, [
     syncedLyrics,
     id,
   ]);
+  if (!result.changes) throw new Error("The track no longer exists in your library.");
 }
 
 export async function createPlaylist(name: string, description?: string) {
   const id = uuid.v4().toString().slice(-8);
   const now = Date.now();
-  try {
-    const db = await getDB();
-    await db.runAsync(
-      `INSERT INTO playlists (id, name, description, coverArt, type, createdAt, updatedAt)
+  const db = await getDB();
+  await db.runAsync(
+    `INSERT INTO playlists (id, name, description, coverArt, type, createdAt, updatedAt)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [id, name, description || "", null, "user", now, now]
-    );
-  } catch (error) {
-    console.log(error);
-  }
+  );
 
   return id;
 }

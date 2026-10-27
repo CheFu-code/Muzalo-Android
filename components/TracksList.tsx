@@ -101,7 +101,8 @@ const TracksList = React.forwardRef<FlatList<Song>, TracksListProps>(
 
     const handlePlaySong = async (track: Song) => {
       const contextQueue = tracks;
-      await playSongGeneric(track, { contextQueue });
+      const played = await playSongGeneric(track, { contextQueue });
+      if (!played) return;
 
       if (isInQueue) {
         router.back();

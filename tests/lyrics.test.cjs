@@ -6,6 +6,25 @@ const { parseLRC, hasTimestamps, formatTimestamp, formatLRC } = load(
   path.join(__dirname, "../tools/parseLyrics.ts")
 );
 
+test("lyrics lookup asks for an artist before making a request or changing lyrics", async (t) => {
+  const messages = [];
+  const fetchLyrics = load(path.join(__dirname, "../tools/fetchLyrics.ts"), {
+    "sonner-native": { toast: { info: (message) => messages.push(message) } },
+    "./db": { addLyrics: () => assert.fail("Must not save lyrics") },
+  }).fetchLyrics;
+  const request = t.mock.method(globalThis, "fetch", () => {
+    assert.fail("Must not request lyrics without an artist");
+  });
+  for (const artist of [null, undefined, "", "  ", "Unknown Artist", " unknown ", " UNKNOWN   ARTIST "]) {
+    assert.equal(await fetchLyrics({ id: "one", title: "Song", artist }, () => {
+      assert.fail("Must not change existing lyrics");
+    }), null);
+  }
+  assert.equal(request.mock.callCount(), 0);
+  assert.equal(messages.length, 7);
+  assert.ok(messages.every((message) => message === "Add the artist in Edit track before fetching lyrics."));
+});
+
 test("timestamps accept whole seconds, centiseconds and milliseconds, including zero", () => {
   assert.deepEqual(
     parseLRC("[00:00] Start\n[00:01.25] Next\n[01:02.345] Later"),
@@ -16,6 +35,18 @@ test("timestamps accept whole seconds, centiseconds and milliseconds, including 
     ]
   );
   assert.equal(hasTimestamps("[00:00] Start"), true);
+});
+
+test("lyrics lookup awaits saving and exposes persistence failure to its caller", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => ({ ok: true, json: async () => ({ plainLyrics: "Words" }) }));
+  const { fetchLyrics } = load(path.join(__dirname, "../tools/fetchLyrics.ts"), {
+    "sonner-native": { toast: { info: assert.fail } },
+  });
+  let writes = 0;
+  await assert.rejects(fetchLyrics({ id: "one", artist: "Artist", title: "Song" }, async () => {
+    writes++; await Promise.resolve(); throw Error("Disk full");
+  }), /Disk full/);
+  assert.equal(writes, 1);
 });
 test("repeated timestamps expand and metadata is excluded from timed playback", () => {
   assert.deepEqual(parseLRC("[ar:Artist]\n[00:12.00][00:03.5] Refrain"), [

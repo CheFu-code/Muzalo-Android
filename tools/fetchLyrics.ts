@@ -1,18 +1,23 @@
 import { Song } from "@/types/types";
 import { toast } from "sonner-native";
-import { addLyrics } from "./db";
 
 export const fetchLyrics = async (
     track: Song | null,
-    setLyrics: (id: string, plainLyrics: string, syncedLyrics?: string) => void
+    setLyrics: (id: string, plainLyrics: string, syncedLyrics?: string) => void | Promise<void>
 ) => {
     if (!track) {
         return null;
     }
 
+    const artist = track.artist?.trim();
+    if (!artist || /^(unknown|unknown\s+artist)$/i.test(artist)) {
+        toast.info("Add the artist in Edit track before fetching lyrics.");
+        return null;
+    }
+
     try {
         const request = await fetch(
-            `https://lrclib.net/api/get?artist_name=${encodeURI(track.artist || "").replace(/%20/g, "+")}&track_name=${encodeURI(track.title || "").replace(/%20/g, "+")}`,
+            `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(track.title || "")}`,
             {
                 method: "GET",
                 headers: {
@@ -24,19 +29,18 @@ export const fetchLyrics = async (
             }
         );
 
+        if (!request.ok && request.status !== 404) throw new Error("Lyrics lookup failed. Please try again.");
         const response = await request.json();
 
         if (response.plainLyrics) {
             console.log("Set lyrics for ", track.title);
 
             if (response.plainLyrics && response.syncedLyrics) {
-                setLyrics(track.id || "", response.plainLyrics, response.syncedLyrics);
+                await setLyrics(track.id || "", response.plainLyrics, response.syncedLyrics);
                 const lyrics = response.syncedLyrics || response.plainLyrics;
-                await addLyrics(track.id || track.uri, response.plainLyrics, lyrics);
                 return lyrics;
             } else {
-                setLyrics(track.id || "", response.plainLyrics);
-                await addLyrics(track.id || track.uri, response.plainLyrics, null);
+                await setLyrics(track.id || "", response.plainLyrics);
                 return response.plainLyrics;
             }
         } else {
@@ -44,6 +48,6 @@ export const fetchLyrics = async (
             return null;
         }
     } catch (error) {
-        console.log(error);
+        throw error;
     }
 };

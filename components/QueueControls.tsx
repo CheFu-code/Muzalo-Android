@@ -4,24 +4,19 @@ import { Song } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
-import TrackPlayer from "react-native-track-player";
 
 export const QUEUE_CONTROLS_HEIGHT = 62;
 
 const QueueControls = ({ tracks }: { tracks: Song[] }) => {
-  const clearQueue = usePlayerStore((s) => s.clearQueue);
   const playSongGeneric = usePlayerStore((s) => s.playSongGeneric);
   const handleShuffle = async () => {
     if (!tracks.length) return;
-    clearQueue();
     const randomIndex = Math.floor(Math.random() * tracks.length);
-    await playSongGeneric(tracks[randomIndex], { contextQueue: tracks });
+    await playSongGeneric(tracks[randomIndex], { contextQueue: tracks, shuffle: true });
   };
   const handlePlay = async () => {
     if (!tracks.length) return;
-    clearQueue();
-    await playSongGeneric(tracks[0], { contextQueue: tracks });
-    await TrackPlayer.play();
+    await playSongGeneric(tracks[0], { contextQueue: tracks, shuffle: false });
   };
   if (!tracks.length) return null;
 
