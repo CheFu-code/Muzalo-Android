@@ -10,6 +10,8 @@ export const muzaloTheme = {
   onAccent: "#092522",
   text: "#F2F6F8",
   muted: "#94A5B3",
+  danger: "#F1A8A8",
+  dangerSoft: "#322327",
 };
 
 export const TAB_BAR_HEIGHT = 64;

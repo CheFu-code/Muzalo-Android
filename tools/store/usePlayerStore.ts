@@ -196,7 +196,10 @@ export const usePlayerStore = create<PlayerStore>()(
 
         const safeTitle =
           file.title?.replace(/[\\/:*?"<>|]/g, "_") || `song_${id}`;
-        const extension = getAudioExtension(remoteUri) ?? getAudioExtension(file.filename) ?? getAudioExtension(file.uri);
+        const extension =
+          getAudioExtension(remoteUri) ??
+          getAudioExtension(file.filename) ??
+          getAudioExtension(file.uri);
         const localUri = await downloadSongWithSAF(
           remoteUri,
           `${safeTitle}${extension ?? ""}`
@@ -212,7 +215,9 @@ export const usePlayerStore = create<PlayerStore>()(
           // Add the track (make sure it includes updated localUri)
           addTrackToPlaylist("downloads", file.id || "");
         } else {
-          toast.error("Could not download the audio file. Check the source and folder access.");
+          toast.error(
+            "Could not download the audio file. Check the source and folder access."
+          );
         }
       },
 
@@ -640,44 +645,38 @@ export const usePlayerStore = create<PlayerStore>()(
         set({ volume: val });
       },
       setLyrics: async (id: string, lyrics: string, syncedLyrics?: string) => {
-        if (!id || (lyrics && syncedLyrics)) {
+        if (!id) {
           return null;
         }
 
-        const { currentSong, getSongInfo } = get();
+        const { getSongInfo } = get();
 
         const song = await getSongInfo(id);
 
-        const synced = song?.syncedLyrics
-          ? song?.syncedLyrics
-          : syncedLyrics
+        const synced =
+          syncedLyrics !== undefined
             ? syncedLyrics
-            : null;
+            : (song?.syncedLyrics ?? null);
 
         await addLyrics(id, lyrics, synced);
         toast.success(`Lyrics added!`);
 
-        if (currentSong?.id === id) {
-          const mutatableCurrentSong = currentSong;
-          mutatableCurrentSong.lyrics = lyrics;
-          mutatableCurrentSong.syncedLyrics = syncedLyrics
-            ? syncedLyrics
-            : null;
-
-          set(() => ({
-            currentSong: mutatableCurrentSong,
-          }));
-        }
-
         set((state) => ({
+          currentSong:
+            state.currentSong?.id === id
+              ? { ...state.currentSong, lyrics, syncedLyrics: synced }
+              : state.currentSong,
           files: state.files.map((f) =>
             f.id === id
               ? {
                   ...f,
                   lyrics,
-                  ...(syncedLyrics ? { syncedLyrics } : {}), // 👈 only add if defined
+                  syncedLyrics: synced,
                 }
               : f
+          ),
+          queue: state.queue.map((f) =>
+            f.id === id ? { ...f, lyrics, syncedLyrics: synced } : f
           ),
         }));
       },
@@ -693,34 +692,33 @@ export const usePlayerStore = create<PlayerStore>()(
           return null;
         }
 
-        const { currentSong } = get();
-
         await editSong(id, title, artist, album, year);
         toast.success(`Song Edited!`);
 
-        if (currentSong?.id === id) {
-          const mutatableCurrentSong = currentSong;
-          mutatableCurrentSong.title = title;
-          mutatableCurrentSong.artist = artist;
-          mutatableCurrentSong.album = album || "";
-          mutatableCurrentSong.year = year;
-
-          set(() => ({
-            currentSong: mutatableCurrentSong,
-          }));
-        }
-
         set((state) => ({
+          currentSong:
+            state.currentSong?.id === id
+              ? {
+                  ...state.currentSong,
+                  title,
+                  artist,
+                  album: album || "",
+                  year,
+                }
+              : state.currentSong,
           files: state.files.map((f) =>
             f.id === id
               ? {
                   ...f,
                   title,
                   artist,
-                  album: album || " ",
+                  album: album || "",
                   year,
                 }
               : f
+          ),
+          queue: state.queue.map((f) =>
+            f.id === id ? { ...f, title, artist, album: album || "", year } : f
           ),
         }));
       },
@@ -750,6 +748,18 @@ export const usePlayerStore = create<PlayerStore>()(
       },
       updateSongSyncedLyrics: async (id: string, syncedLyrics: string) => {
         await updateSongSyncedLyrics(id, syncedLyrics);
+        set((state) => ({
+          currentSong:
+            state.currentSong?.id === id
+              ? { ...state.currentSong, syncedLyrics }
+              : state.currentSong,
+          files: state.files.map((song) =>
+            song.id === id ? { ...song, syncedLyrics } : song
+          ),
+          queue: state.queue.map((song) =>
+            song.id === id ? { ...song, syncedLyrics } : song
+          ),
+        }));
         toast.success(`Synced Lyrics added!`);
       },
     }),

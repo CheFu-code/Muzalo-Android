@@ -1,55 +1,33 @@
 import TracksList from "@/components/TracksList";
-import { muzaloTheme } from "@/constants/tokens";
+import { EmptyState } from "@/components/ui";
+import { MINI_PLAYER_HEIGHT, muzaloTheme as c } from "@/constants/tokens";
 import { usePlayerStore, usePlaylistStore } from "@/tools/store/usePlayerStore";
-import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import React from "react";
-import { Text, View } from "react-native";
-
-const FavoritesScreen = () => {
+import { View } from "react-native";
+export default function FavoritesScreen() {
   const files = usePlayerStore((s) => s.files);
-
   const favorites = usePlaylistStore((s) => s.favorites);
-
-  const favoriteIds = favorites.map((item) => item.id);
-
-  const favoriteSongs = files.filter((song) => favoriteIds.includes(song.id));
-
-  const tabBarHeight = useBottomTabBarHeight();
-
-  if (favoriteSongs.length === 0) {
-    return (
-      <View
-        style={{
-          paddingBottom: tabBarHeight,
-          backgroundColor: muzaloTheme.background,
-        }}
-        className="flex-1 items-center justify-center bg-black px-6"
-      >
-        <Ionicons name="heart-outline" size={64} color={muzaloTheme.accent} />
-        <Text className="text-neutral-400 text-xl font-semibold mt-4">
-          No favorites yet
-        </Text>
-        <Text className="text-neutral-500 text-base mt-2 text-center">
-          Tap the <Ionicons name="heart" size={14} color={muzaloTheme.accent} />{" "}
-          on any track to add it here.
-        </Text>
-      </View>
-    );
-  }
-
+  const hasSong = usePlayerStore((s) => Boolean(s.currentSong));
+  const tabHeight = useBottomTabBarHeight();
+  const ids = new Set(favorites.map((item) => item.id));
+  const songs = files.filter((song) => ids.has(song.id));
   return (
-    <View style={{ flex: 1, backgroundColor: muzaloTheme.background }}>
-      <View className="pb-40 size-full">
-        <TracksList
-          tracks={favoriteSongs}
-          contentContainerStyle={{
-            paddingBottom: tabBarHeight,
-          }}
-        />
-      </View>
+    <View style={{ flex: 1, backgroundColor: c.background }}>
+      <TracksList
+        tracks={songs}
+        contentContainerStyle={{
+          paddingBottom:
+            tabHeight + (hasSong ? MINI_PLAYER_HEIGHT + 16 : 0) + 24,
+          flexGrow: 1,
+        }}
+        ListEmptyComponent={
+          <EmptyState
+            title="Keep your favourites close"
+            message="Tap the heart on a track to find it here."
+            icon="heart-outline"
+          />
+        }
+      />
     </View>
   );
-};
-
-export default FavoritesScreen;
+}

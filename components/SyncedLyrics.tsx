@@ -1,9 +1,9 @@
-import { parseLRC } from "@/tools/parseLyrics";
+import { muzaloTheme as c } from "@/constants/tokens";
+import { hasTimestamps, parseLRC } from "@/tools/parseLyrics";
 import { usePlayerStore } from "@/tools/store/usePlayerStore";
-import React, { useEffect, useRef, useState } from "react";
-import { FlatList, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ScrollView, Text, View } from "react-native";
 import { useProgress } from "react-native-track-player";
-
 export default function SyncedLyrics({
   lrc,
   toggleShowLyrics,
@@ -11,82 +11,89 @@ export default function SyncedLyrics({
   lrc: string;
   toggleShowLyrics: () => void;
 }) {
-  const lyrics = parseLRC(lrc);
-  const synced = lyrics.some((l) => l.time > 0);
-  const handleChangeSongPosition = usePlayerStore(
-    (s) => s.handleChangeSongPosition
-  );
+  const lyrics = useMemo(() => parseLRC(lrc), [lrc]);
+  const synced = hasTimestamps(lrc);
+  const seek = usePlayerStore((s) => s.handleChangeSongPosition);
   const { position } = useProgress(100);
-
-  const flatListRef = useRef<FlatList>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [manualScroll, setManualScroll] = useState(false);
-  const scrollTimeout = useRef<number | null>(null);
-
-  // find current line based on position
+  const list = useRef<ScrollView>(null);
+  const offsets = useRef<number[]>([]);
+  const viewport = useRef(0);
+  const [manual, setManual] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const active = lyrics.findIndex(
+    (line, i) =>
+      position >= line.time &&
+      (i === lyrics.length - 1 || position < lyrics[i + 1].time)
+  );
   useEffect(() => {
-    if (!synced) return;
-    const index = lyrics.findIndex(
-      (line, i) =>
-        position >= line.time &&
-        (i === lyrics.length - 1 || position < lyrics[i + 1].time)
-    );
-    if (index !== -1 && index !== activeIndex) setActiveIndex(index);
-  }, [lyrics, position, synced]);
-
-  // auto-scroll to active line
-  useEffect(() => {
-    if (!synced || manualScroll || !flatListRef.current) return;
-    flatListRef.current.scrollToOffset({
-      offset: activeIndex * 40, // adjust row height if needed
-      animated: true,
-    });
-  }, [activeIndex, manualScroll, synced]);
-
-  // handle manual scroll (disable auto-scroll temporarily)
-  const handleUserScroll = () => {
-    if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
-    if (!manualScroll) setManualScroll(true);
-    scrollTimeout.current = setTimeout(() => {
-      setManualScroll(false);
-    }, 5000);
+    offsets.current = [];
+  }, [lrc]);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    []
+  );
+  const scrollToActive = useCallback(() => {
+    if (
+      synced &&
+      !manual &&
+      active >= 0 &&
+      offsets.current[active] !== undefined
+    )
+      list.current?.scrollTo({
+        y: Math.max(0, offsets.current[active] - viewport.current * 0.35),
+        animated: true,
+      });
+  }, [active, manual, synced]);
+  useEffect(scrollToActive, [scrollToActive]);
+  const onDrag = () => {
+    if (timer.current) clearTimeout(timer.current);
+    setManual(true);
+    timer.current = setTimeout(() => setManual(false), 5000);
   };
-
+  // A bounded ScrollView can also sit inside the player's scrolling layout.
   return (
-    <View style={{ flex: 1 }}>
-      <FlatList
-        ref={flatListRef}
-        data={lyrics}
-        keyExtractor={(_, i) => i.toString()}
-        scrollEnabled
-        onScrollBeginDrag={handleUserScroll}
-        onMomentumScrollEnd={handleUserScroll}
-        getItemLayout={(_, index) => ({
-          length: 40,
-          offset: 40 * index,
-          index,
-        })}
-        renderItem={({ item, index }) => (
-          <Text
-            onPress={() => synced && handleChangeSongPosition(item.time)}
-            onLongPress={toggleShowLyrics}
-            className={`text-center text-lg mx-4 ${
-              synced && index === activeIndex
-                ? "text-white font-bold"
-                : "text-gray-400"
-            }`}
-            style={{ marginVertical: 6 }}
-          >
-            {item.text}
-          </Text>
-        )}
+    <View
+      style={{ flex: 1 }}
+      onLayout={(e) => {
+        viewport.current = e.nativeEvent.layout.height;
+        scrollToActive();
+      }}
+    >
+      <ScrollView
+        ref={list}
+        nestedScrollEnabled
+        onScrollBeginDrag={onDrag}
+        onMomentumScrollEnd={onDrag}
+        contentContainerStyle={{ paddingVertical: 32 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingVertical: 100,
-          flexGrow: 1,
-          justifyContent: "center",
-        }}
-      />
+      >
+        {lyrics.map((item, index) => (
+          <Text
+            key={index}
+            accessibilityRole={synced ? "button" : undefined}
+            accessibilityLabel={item.text}
+            onLayout={(e) => {
+              offsets.current[index] = e.nativeEvent.layout.y;
+              if (index === active) scrollToActive();
+            }}
+            onPress={() => synced && seek(item.time)}
+            onLongPress={toggleShowLyrics}
+            style={{
+              color: synced && active === index ? c.accent : c.muted,
+              fontSize: 19,
+              lineHeight: 29,
+              fontWeight: synced && active === index ? "700" : "500",
+              textAlign: "center",
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+            }}
+          >
+            {item.text || " "}
+          </Text>
+        ))}
+      </ScrollView>
     </View>
   );
 }

@@ -1,43 +1,48 @@
+import { muzaloTheme as c } from "@/constants/tokens";
 import formatDuration from "@/tools/formatDuration";
 import { usePlayerStore } from "@/tools/store/usePlayerStore";
 import Slider from "@react-native-community/slider";
 import React from "react";
 import { Text, View } from "react-native";
 import { useProgress } from "react-native-track-player";
+import { ui } from "./ui";
 
 const ProgressBar = React.memo(
   ({ queueIndex }: { queueIndex: string | number }) => {
-    const handleChangeSongPosition = usePlayerStore(
-      (s) => s.handleChangeSongPosition
-    );
+    const seek = usePlayerStore((s) => s.handleChangeSongPosition);
     const { position, duration } = useProgress();
-
+    const end = Number.isFinite(duration) && duration > 0 ? duration : 0;
+    const value = Number.isFinite(position)
+      ? Math.max(0, Math.min(position, end))
+      : 0;
     return (
-      <>
-        <View className="flex-row justify-between px-7 mt-4 items-center">
-          <Text className="text-gray-400">{formatDuration(position)}</Text>
-          {queueIndex && queueIndex !== 0 ? (
-            <Text className="text-gray-400 text-xs bg-slate-400/25 items-center rounded-full py-0.5 px-1">
-              {queueIndex}
-            </Text>
-          ) : null}
-          <Text className="text-gray-400">{formatDuration(duration)}</Text>
-        </View>
+      <View>
         <Slider
-          style={{ width: "100%", height: 40 }}
+          accessibilityLabel="Track position"
+          style={{ width: "100%", height: 44 }}
           minimumValue={0}
-          maximumValue={duration}
-          value={position}
-          onSlidingComplete={(val) => handleChangeSongPosition(val)}
-          minimumTrackTintColor="#e17645"
-          maximumTrackTintColor="#4a4a4a"
-          thumbTintColor="#e17645"
+          maximumValue={end || 1}
+          value={value}
+          disabled={!end}
+          onSlidingComplete={seek}
+          minimumTrackTintColor={c.accent}
+          maximumTrackTintColor={c.border}
+          thumbTintColor={c.accent}
         />
-      </>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingHorizontal: 12,
+          }}
+        >
+          <Text style={ui.label}>{formatDuration(value)}</Text>
+          {queueIndex ? <Text style={ui.label}>{queueIndex}</Text> : null}
+          <Text style={ui.label}>{formatDuration(end)}</Text>
+        </View>
+      </View>
     );
   }
 );
-
 ProgressBar.displayName = "ProgressBar";
-
 export default ProgressBar;

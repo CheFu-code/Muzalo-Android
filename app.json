@@ -8,13 +8,14 @@
         "scheme": "music-player",
         "userInterfaceStyle": "dark",
         "androidStatusBar": {
-            "barStyle": "light-content"
+            "barStyle": "light-content",
+            "backgroundColor": "#000000"
         },
         "newArchEnabled": false,
         "ios": {
             "supportsTablet": true,
             "infoPlist": {
-                "UIBackgroundModes": ["audio"]
+                "UIBackgroundModes": ["audio", "audio"]
             }
         },
         "android": {
@@ -24,7 +25,17 @@
                 "INTERNET",
                 "MODIFY_AUDIO_SETTINGS",
                 "WAKE_LOCK",
-                "FOREGROUND_SERVICE"
+                "FOREGROUND_SERVICE",
+                "android.permission.RECORD_AUDIO",
+                "android.permission.MODIFY_AUDIO_SETTINGS",
+                "READ_EXTERNAL_STORAGE",
+                "WRITE_EXTERNAL_STORAGE",
+                "INTERNET",
+                "MODIFY_AUDIO_SETTINGS",
+                "WAKE_LOCK",
+                "FOREGROUND_SERVICE",
+                "android.permission.RECORD_AUDIO",
+                "android.permission.MODIFY_AUDIO_SETTINGS"
             ],
             "package": "co.za.chefu.muzalo",
             "versionCode": 1,
@@ -69,9 +80,21 @@
         },
         "extra": {
             "router": {},
+            "expo-navigation-bar": {
+                "position": "absolute",
+                "visibility": "visible",
+                "behavior": "inset-swipe",
+                "backgroundColor": "#000000"
+            },
             "eas": {
-                "projectId": "0db91206-d462-411b-a108-cb7551aa5f5e"
+                "projectId": "e665d300-e816-431d-91a5-4dd99b4022e3"
             }
+        },
+        "runtimeVersion": {
+            "policy": "appVersion"
+        },
+        "updates": {
+            "url": "https://u.expo.dev/e665d300-e816-431d-91a5-4dd99b4022e3"
         }
     }
 }

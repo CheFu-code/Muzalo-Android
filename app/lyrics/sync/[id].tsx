@@ -1,297 +1,272 @@
-import coverImage from "@/assets/placeholder2.jpg";
+import LoadingScreen from "@/components/LoadingScreen";
 import { PlayPauseButton } from "@/components/PlayerControls";
-import formatDuration from "@/tools/formatDuration";
-import { usePlayerStore } from "@/tools/store/usePlayerStore";
-import { FontAwesome6, MaterialIcons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
-import Animated, {
-  useAnimatedScrollHandler,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
 import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+  ActionButton,
+  EmptyState,
+  IconButton,
+  Screen,
+  ScreenHeader,
+  SongHeading,
+  ui,
+} from "@/components/ui";
+import { muzaloTheme as c } from "@/constants/tokens";
+import { useSongDetails } from "@/hooks/useSongDetails";
+import { formatLRC, formatTimestamp, parseLRC } from "@/tools/parseLyrics";
+import { usePlayerStore } from "@/tools/store/usePlayerStore";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { Alert, FlatList, Text, TouchableOpacity, View } from "react-native";
 import TrackPlayer, { useProgress } from "react-native-track-player";
 
+type TimedLine = { index: number; time: number; text: string };
 export default function SyncLyricsScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-
-  const { getSongInfo } = usePlayerStore();
-
-  const handleForwardPosition = usePlayerStore((s) => s.handleForwardPosition);
-  const handlebackwardPosition = usePlayerStore(
-    (s) => s.handlebackwardPosition
-  );
-  const handleChangeSongPosition = usePlayerStore(
-    (s) => s.handleChangeSongPosition
-  );
-
-  const [song, setSong] = useState<any>(null);
+  const { song, loading, error } = useSongDetails(id);
+  const current = usePlayerStore((s) => s.currentSong);
+  const play = usePlayerStore((s) => s.playSongGeneric);
+  const seek = usePlayerStore((s) => s.handleChangeSongPosition);
+  const saveLyrics = usePlayerStore((s) => s.updateSongSyncedLyrics);
+  const router = useRouter();
   const [lyrics, setLyrics] = useState<string[]>([]);
-  const [synced, setSynced] = useState<
-    { index: number; time: number; text: string }[]
-  >([]);
-
-  const scrollRef = useRef<React.ElementRef<typeof Animated.ScrollView> | null>(
-    null
+  const [synced, setSynced] = useState<TimedLine[]>([]);
+  const [busy, setBusy] = useState(false);
+  const marking = useRef(false);
+  const list = useRef<FlatList<string>>(null);
+  const { position, duration } = useProgress(100);
+  const matching = Boolean(song && current?.uri === song.uri);
+  const next = lyrics.findIndex(
+    (_, i) => !synced.some((line) => line.index === i)
   );
-  const scrollY = useSharedValue(0);
-
   useEffect(() => {
-    (async () => {
-      if (!id) return;
-
-      const info = await getSongInfo(id);
-      setSong(info);
-      handleChangeSongPosition(0);
-
-      if (info?.syncedLyrics) {
-        // Parse LRC format into { index, time, text }
-        const lines = info.syncedLyrics.split("\n").filter(Boolean);
-        const parsedSynced = lines.map((line, index) => {
-          const match = line.match(/\[(\d+):(\d+)\.(\d+)\]\s*(.*)/);
-          if (!match) return { index, time: 0, text: line }; // fallback
-          const minutes = parseInt(match[1], 10);
-          const seconds = parseInt(match[2], 10);
-          const centiseconds = parseInt(match[3], 10);
-          const time = minutes * 60 + seconds + centiseconds / 100;
-          const text = match[4];
-          return { index, time, text };
-        });
-
-        // Set lyrics text only (for editing lines)
-        setLyrics(parsedSynced.map((l) => l.text));
-
-        // Set synced timestamps
-        setSynced(parsedSynced);
-      } else if (info?.lyrics) {
-        // fallback: just plain lyrics
-        setLyrics(info.lyrics.split("\n").filter(Boolean));
-        setSynced([]); // no synced timestamps yet
-      }
-    })();
-  }, [getSongInfo, handleChangeSongPosition, id]);
-
-  const { position: currentTime } = useProgress(100);
-
-  const handleTapLine = async (index: number) => {
-    const text = lyrics[index];
-    if (!text) return;
-
-    // get current playback time from your store (currentTime is in seconds or ms depending on your app)
-    // here I assume usePlayerStore gives currentTime in seconds (adjust if ms)
-    const getProgress = await TrackPlayer.getProgress();
-    const current = getProgress.position;
-
-    setSynced((prev) => {
-      // if there's already an entry for this index, replace it
-      const existingIndex = prev.findIndex((p) => p.index === index);
-      const newEntry = { index, time: current, text };
-
-      if (existingIndex >= 0) {
-        let copy = [...prev];
-        copy[existingIndex] = newEntry;
-        copy = copy.filter((c) => c.time <= current);
-        return copy;
-      } else {
-        return [...prev, newEntry];
-      }
-    });
-  };
-
-  const handleSave = async () => {
-    if (!id || !synced.length) return;
-
+    if (!song) return;
+    if (song.syncedLyrics) {
+      const parsed = parseLRC(song.syncedLyrics);
+      setLyrics(parsed.map((line) => line.text));
+      setSynced(parsed.map((line, index) => ({ ...line, index })));
+    } else {
+      setLyrics(
+        (song.lyrics || "")
+          .split("\n")
+          .map((t) => t.trim())
+          .filter(Boolean)
+      );
+      setSynced([]);
+    }
+  }, [song]);
+  const start = async () => {
+    if (!song || busy) return;
+    setBusy(true);
     try {
-      // Sort by timestamp to ensure lyrics are in correct order
-      const sorted = [...synced].sort((a, b) => a.time - b.time);
-
-      // Convert to LRC format: [mm:ss.xx] Line
-      const lrc = sorted
-        .map(({ time, text }) => {
-          const minutes = Math.floor(time / 60);
-          const seconds = Math.floor(time % 60);
-          const centiseconds = Math.floor((time % 1) * 100); // 2 decimal places
-          return `[${String(minutes).padStart(2, "0")}:${String(
-            seconds
-          ).padStart(
-            2,
-            "0"
-          )}.${String(centiseconds).padStart(2, "0")}] ${text}`;
-        })
-        .join("\n");
-
-      // Save to DB via player store
-      await usePlayerStore.getState().updateSongSyncedLyrics(id, lrc);
-
+      await play(song);
+      await seek(0);
+    } catch {
+      Alert.alert("Could not play this track", "Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const mark = async (index: number) => {
+    if (!matching || index < 0 || busy || marking.current) return;
+    marking.current = true;
+    try {
+      const { position: time } = await TrackPlayer.getProgress();
+      setSynced((prev) => [
+        ...prev.filter((line) => line.index < index && line.time <= time),
+        { index, time, text: lyrics[index] },
+      ]);
+      if (index + 1 < lyrics.length)
+        list.current?.scrollToIndex({
+          index: index + 1,
+          viewPosition: 0.4,
+          animated: true,
+        });
+    } catch {
+      Alert.alert("Could not mark this line", "Please try again.");
+    } finally {
+      marking.current = false;
+    }
+  };
+  const select = (index: number) => {
+    const line = synced.find((value) => value.index === index);
+    if (!matching || busy) return;
+    if (line) {
+      setSynced((prev) => prev.filter((value) => value.index < index));
+      void seek(line.time);
+    } else void mark(index);
+  };
+  const save = async () => {
+    if (!id || !synced.length || busy) return;
+    setBusy(true);
+    try {
+      await saveLyrics(
+        id,
+        formatLRC([...synced].sort((a, b) => a.time - b.time))
+      );
       router.back();
-    } catch (err) {
-      console.error("Error saving synced lyrics:", err);
+    } catch {
+      Alert.alert("Could not save timing", "Please try again.");
+    } finally {
+      setBusy(false);
     }
   };
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (e) => {
-      scrollY.value = withTiming(e.contentOffset.y);
-    },
-  });
-
-  const handleSelectLine = (time?: number) => {
-    if (!time) {
-      return;
-    }
-    const newSynced = synced.filter((c) => c.time <= time);
-    setSynced(newSynced);
-    handleChangeSongPosition(time);
+  const confirmSave = () => {
+    if (synced.length < lyrics.length)
+      Alert.alert(
+        "Save partial timing?",
+        lyrics.length -
+          synced.length +
+          " lines still need timing. Only marked lines will appear in timed playback.",
+        [
+          { text: "Keep syncing", style: "cancel" },
+          { text: "Save", onPress: save },
+        ]
+      );
+    else void save();
   };
-
-  const { bottom } = useSafeAreaInsets();
-
-  if (!song) {
-    return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Text className="text-gray-400">Loading...</Text>
-      </View>
-    );
-  }
-
+  if (loading) return <LoadingScreen />;
   return (
-    <SafeAreaView className="flex-1 bg-black" pointerEvents="box-none">
-      {/* Header */}
-      <View
-        className="flex-row items-center justify-between px-5 pt-3"
-        style={{ elevation: 10 }}
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={26} color="#fff" />
-        </TouchableOpacity>
-        <Text className="text-white text-lg font-bold">Sync Lyrics</Text>
-        <TouchableOpacity onPress={handleSave} className="z-50">
-          <FontAwesome6 name="check" size={26} color="#22c55e" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Cover Art */}
-      <View className="mt-6 items-center">
-        <View className="relative rounded-2xl overflow-hidden border border-neutral-800 shadow-lg shadow-black">
-          <Image
-            source={
-              song.coverArt ? { uri: song.coverArt } : (coverImage as any)
-            }
-            className="w-64 h-64 rounded-2xl"
-            resizeMode="cover"
+    <Screen edges={["top", "left", "right", "bottom"]}>
+      <ScreenHeader
+        title="Sync lyrics"
+        right={
+          <IconButton
+            icon="checkmark"
+            label="Save lyric timing"
+            color={c.accent}
+            disabled={!synced.length || busy}
+            onPress={confirmSave}
           />
-        </View>
-        <Text className="text-white text-xl font-semibold mt-4">
-          {song.title || "Unknown Title"}
-        </Text>
-        <Text className="text-gray-400">{song.artist || "Unknown Artist"}</Text>
-      </View>
-
-      {/* Lyrics */}
-      <Animated.ScrollView
-        ref={scrollRef}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        className="flex-1 mt-6"
-        contentContainerStyle={{ paddingBottom: 120 }}
-      >
-        {lyrics.map((line, index) => {
-          const syncedEntry = synced.find((e) => e.index === index);
-          const syncedYet = !!syncedEntry;
-          return (
-            <TouchableOpacity
-              key={index}
-              activeOpacity={0.8}
-              onPress={() => handleSelectLine(syncedEntry?.time)}
-              className={`mx-6 my-2 py-3 px-3 rounded-2xl ${
-                syncedYet
-                  ? "bg-green-600/30 border border-green-500/50"
-                  : "bg-neutral-800/40 border border-neutral-700"
-              }`}
-            >
-              <View className="flex-row justify-between items-center">
-                <Text
-                  className={`text-base max-w-[90%] ${
-                    syncedYet ? "text-green-300 font-semibold" : "text-gray-300"
-                  }`}
-                >
-                  {line}
-                </Text>
-
-                {/* optional: show timestamp for this line if available */}
-                {syncedEntry ? (
-                  <Text className="text-sm text-green-200">
-                    {formatDuration(syncedEntry.time)}
-                  </Text>
-                ) : null}
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </Animated.ScrollView>
-
-      {/* Floating Controls */}
-      <View
-        className="absolute left-0 right-0 py-6 bg-black/70 border-t border-neutral-800"
-        style={{ bottom: bottom === 0 ? bottom : bottom - 20 }}
-      >
-        <View className="flex-row justify-center items-center space-x-6">
-          {/* Play/Pause */}
-          <View className="flex-row items-center justify-center">
-            <TouchableOpacity
-              onPress={() => handleSave()}
-              activeOpacity={0.8}
-              className="bg-green-600 w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-green-500/50 right-7 absolute"
-            >
-              <MaterialIcons name="save" size={28} color="#fff" />
-            </TouchableOpacity>
+        }
+      />
+      {!song ? (
+        <EmptyState
+          title="Track unavailable"
+          message={error || "This track could not be found."}
+        />
+      ) : (
+        <>
+          <View style={{ padding: 20, gap: 14 }}>
+            <SongHeading
+              title={song.title}
+              artist={song.artist}
+              coverArt={song.coverArt}
+            />
+            <Text style={ui.muted}>
+              Mark each line as you hear it. Tap a timed line to rewind and redo
+              it from there.
+            </Text>
           </View>
-          <View className="flex-row items-center justify-center w-14">
-            <TouchableOpacity
-              className="flex-row justify-center items-center"
-              onPress={() => handlebackwardPosition()}
-            >
-              <FontAwesome6 name="forward-step" size={30} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          <View className="flex-row items-center justify-center w-14">
-            <PlayPauseButton iconSize={30} />
-          </View>
-          <View className="flex-row items-center justify-center w-14">
-            <TouchableOpacity
-              className="flex-row justify-center items-center"
-              onPress={() => handleForwardPosition()}
-            >
-              <FontAwesome6 name="forward-step" size={30} color="#fff" />
-            </TouchableOpacity>
-          </View>
-          {/* Sync Button */}
-          <TouchableOpacity
-            onPress={() =>
-              handleTapLine(
-                synced.length < lyrics.length
-                  ? synced.length
-                  : synced.length === lyrics.length
-                    ? 0
-                    : lyrics.length - 1
-              )
+          <FlatList
+            ref={list}
+            data={lyrics}
+            keyExtractor={(_, i) => String(i)}
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingBottom: 20,
+              gap: 8,
+            }}
+            onScrollToIndexFailed={({ index, averageItemLength }) =>
+              list.current?.scrollToOffset({
+                offset: index * averageItemLength,
+                animated: true,
+              })
             }
-            activeOpacity={0.8}
-            className="bg-blue-600 w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-blue-500/50 right-7 absolute"
+            ListEmptyComponent={
+              <EmptyState
+                title="Add lyrics first"
+                message="Add plain lyrics from track details, then return to set the timing."
+              />
+            }
+            renderItem={({ item, index }) => {
+              const line = synced.find((value) => value.index === index);
+              return (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={"Line " + (index + 1) + ": " + item}
+                  disabled={!matching || busy}
+                  onPress={() => select(index)}
+                  style={[
+                    ui.card,
+                    {
+                      gap: 6,
+                      borderColor: index === next ? c.accent : c.border,
+                      backgroundColor: line ? c.accentSoft : c.surface,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[ui.label, { color: line ? c.accent : c.muted }]}
+                  >
+                    {line
+                      ? formatTimestamp(line.time)
+                      : "Line " +
+                        (index + 1) +
+                        (index === next ? " / Up next" : "")}
+                  </Text>
+                  <Text style={ui.body}>{item}</Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
+          <View
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 10,
+              paddingBottom: 12,
+              borderTopWidth: 1,
+              borderTopColor: c.border,
+              gap: 8,
+            }}
           >
-            <MaterialIcons name="timer" size={28} color="#fff" />
-          </TouchableOpacity>
-        </View>
-        <Text className="text-center text-gray-400 mt-3">
-          {currentTime.toFixed(1)}s
-        </Text>
-      </View>
-    </SafeAreaView>
+            {!matching ? (
+              <ActionButton
+                label="Play this track to start"
+                icon="play"
+                loading={busy}
+                onPress={start}
+              />
+            ) : (
+              <>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-around",
+                    alignItems: "center",
+                  }}
+                >
+                  <IconButton
+                    icon="play-back"
+                    label="Seek back five seconds"
+                    disabled={busy}
+                    onPress={() => seek(Math.max(0, position - 5))}
+                  />
+                  <PlayPauseButton iconSize={25} />
+                  <Text style={ui.label}>
+                    {formatTimestamp(position)} / {synced.length} of{" "}
+                    {lyrics.length}
+                  </Text>
+                  <IconButton
+                    icon="play-forward"
+                    label="Seek forward five seconds"
+                    disabled={busy}
+                    onPress={() =>
+                      seek(Math.min(duration || position + 5, position + 5))
+                    }
+                  />
+                </View>
+                <ActionButton
+                  label={
+                    next < 0 ? "All lines marked" : "Mark line " + (next + 1)
+                  }
+                  icon="timer-outline"
+                  disabled={next < 0 || !lyrics.length || busy}
+                  onPress={() => mark(next)}
+                />
+              </>
+            )}
+          </View>
+        </>
+      )}
+    </Screen>
   );
 }

@@ -123,7 +123,10 @@ const TracksList = React.forwardRef<FlatList<Song>, TracksListProps>(
           !hideQueueControls ? <QueueControls tracks={tracks} /> : null
         }
         onScrollToIndexFailed={(info) => {
-          console.warn("ScrollToIndex failed", info);
+          listRef.current?.scrollToOffset?.({
+            offset: info.averageItemLength * info.index,
+            animated: false,
+          });
           setTimeout(() => {
             listRef.current?.scrollToIndex?.({
               index: info.index,
@@ -132,15 +135,19 @@ const TracksList = React.forwardRef<FlatList<Song>, TracksListProps>(
             });
           }, 500);
         }}
-        getItemLayout={(_, index) => ({
-          length: 76,
-          offset:
-            76 * index +
-            (!hideQueueControls && tracks.length > 0
-              ? QUEUE_CONTROLS_HEIGHT
-              : 0),
-          index,
-        })}
+        getItemLayout={
+          rest.ListHeaderComponent
+            ? undefined
+            : (_, index) => ({
+                length: 76,
+                offset:
+                  76 * index +
+                  (!hideQueueControls && tracks.length > 0
+                    ? QUEUE_CONTROLS_HEIGHT
+                    : 0),
+                index,
+              })
+        }
         renderItem={({ item: track, index }) => (
           <TracksListItem
             index={index}

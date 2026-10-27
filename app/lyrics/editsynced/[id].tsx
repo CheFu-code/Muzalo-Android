@@ -1,198 +1,123 @@
-import coverImage from "@/assets/placeholder2.jpg";
-import { AnimatedButton } from "@/components/AnimatedButton";
-import { usePlayerStore } from "@/tools/store/usePlayerStore";
-import { FontAwesome6, MaterialIcons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import SongScreen from "@/components/SongScreen";
+import { ActionButton, FormField, ui } from "@/components/ui";
+import { useSongDetails } from "@/hooks/useSongDetails";
 import {
-  Image,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+  formatLRC,
+  formatTimestamp,
+  LyricLine,
+  parseLRC,
+} from "@/tools/parseLyrics";
+import { usePlayerStore } from "@/tools/store/usePlayerStore";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Alert, Text, View } from "react-native";
 
 export default function EditSyncedLyricsScreen() {
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getSongInfo } = usePlayerStore();
-
-  const [song, setSong] = useState<any>(null);
-  const [unSyncedLyrics, setUnSyncedLyrics] = useState<
-    { index: number; time: number; text: string }[]
-  >([]);
-  const [lines, setLines] = useState<
-    { index: number; time: number; text: string }[]
-  >([]);
-
+  const { song, loading, error } = useSongDetails(id);
+  const saveLyrics = usePlayerStore((s) => s.updateSongSyncedLyrics);
+  const router = useRouter();
+  const [lines, setLines] = useState<LyricLine[]>([]);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
-    (async () => {
-      if (!id) return;
-
-      const info = await getSongInfo(id);
-      setSong(info);
-
-      if (info?.syncedLyrics) {
-        // Parse synced lyrics (LRC format)
-        const parsed = info.syncedLyrics
-          .split("\n")
-          .filter(Boolean)
-          .map((line: string, index: number) => {
-            const match = line.match(/\[(\d+):(\d+)\.(\d+)\]\s*(.*)/);
-            if (!match) return { index, time: 0, text: line.trim() || " " };
-            const minutes = parseInt(match[1], 10);
-            const seconds = parseInt(match[2], 10);
-            const centiseconds = parseInt(match[3], 10);
-            const time = minutes * 60 + seconds + centiseconds / 100;
-            const text = match[4];
-            return { index, time, text };
-          });
-
-        setLines(parsed);
-        if (info?.lyrics) {
-          // fallback to unsynced plain lyrics
-          const fallback = info.lyrics
-            .split("\n")
-            .filter(Boolean)
-            .map((text, index) => ({ index, time: 0, text }));
-          setUnSyncedLyrics(fallback);
-        }
-      } else if (info?.lyrics) {
-        // fallback to unsynced plain lyrics
-        const fallback = info.lyrics
-          .split("\n")
-          .filter(Boolean)
-          .map((text, index) => ({ index, time: 0, text }));
-        setLines(fallback);
-      }
-    })();
-  }, [getSongInfo, id]);
-
-  const handleChangeText = (index: number, newText: string) => {
-    setLines((prev) =>
-      prev.map((l) => (l.index === index ? { ...l, text: newText } : l))
-    );
-  };
-
-  const handleSave = async () => {
-    if (!id || !lines.length) return;
+    if (song) setLines(parseLRC(song.syncedLyrics || song.lyrics || ""));
+  }, [song]);
+  const save = async () => {
+    if (!id || !lines.length || busy) return;
+    setBusy(true);
     try {
-      const formatted = lines
-        .map(({ time, text }) => {
-          const minutes = Math.floor(time / 60);
-          const seconds = Math.floor(time % 60);
-          const centiseconds = Math.floor((time % 1) * 100);
-          return `[${String(minutes).padStart(2, "0")}:${String(
-            seconds
-          ).padStart(
-            2,
-            "0"
-          )}.${String(centiseconds).padStart(2, "0")}] ${text}`;
-        })
-        .join("\n");
-
-      await usePlayerStore.getState().updateSongSyncedLyrics(id, formatted);
+      await saveLyrics(id, formatLRC(lines));
       router.back();
-    } catch (err) {
-      console.error("Error saving synced lyrics:", err);
+    } catch {
+      Alert.alert(
+        "Could not save lyrics",
+        "Your changes are still here. Please try again."
+      );
+    } finally {
+      setBusy(false);
     }
   };
-
-  const handleCopyLines = () => {
-    console.log("Holla");
-    const holder = [];
-
-    for (let i = 0; i < unSyncedLyrics.length; i++) {
-      lines[i].text = unSyncedLyrics[i].text;
-      holder.push(lines[i]);
+  const copy = () => {
+    const plain = (song?.lyrics || "")
+      .split("\n")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (plain.length !== lines.length) {
+      Alert.alert(
+        "Line counts differ",
+        "The plain lyrics have " +
+          plain.length +
+          " lines and the timed lyrics have " +
+          lines.length +
+          ". Edit the lines here, or sync the plain lyrics again to preserve the correct timing."
+      );
+      return;
     }
-    console.log(holder[0]);
-    setLines(holder);
-  };
-
-  if (!song)
-    return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Text className="text-gray-400">Loading...</Text>
-      </View>
+    Alert.alert(
+      "Replace lyric text?",
+      "This copies your plain lyrics into the timed lines and keeps their timestamps.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Copy",
+          onPress: () =>
+            setLines((prev) =>
+              prev.map((line, i) => ({ ...line, text: plain[i] }))
+            ),
+        },
+      ]
     );
-
+  };
   return (
-    <SafeAreaView className="flex-1 bg-black" pointerEvents="box-none">
-      {/* Header */}
-      <View
-        className="flex-row items-center justify-between px-5 pt-3"
-        style={{ elevation: 10 }}
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={26} color="#fff" />
-        </TouchableOpacity>
-        <Text className="text-white text-lg font-bold">Edit Synced Lyrics</Text>
-        <TouchableOpacity onPress={handleSave}>
-          <FontAwesome6 name="check" size={26} color="#22c55e" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Cover Art */}
-      <View className="mt-6 items-center">
-        <Image
-          source={song.coverArt ? { uri: song.coverArt } : (coverImage as any)}
-          className="w-64 h-64 rounded-2xl border border-neutral-800 shadow-lg shadow-black"
-          resizeMode="cover"
-        />
-        <Text className="text-white text-xl font-semibold mt-4">
-          {song.title || "Unknown Title"}
-        </Text>
-        <Text className="text-gray-400">{song.artist || "Unknown Artist"}</Text>
-      </View>
-      <View className="w-full px-8 gap-y-4 mt-8 z-50">
-        <AnimatedButton
-          color="green"
-          label="Edit UnSync Lyrics"
-          onPress={() =>
-            router.push({
-              pathname: "/lyrics/edit/[id]",
-              params: { id: song.id },
-            })
-          }
-        />
-        <AnimatedButton
-          color="cyan"
-          label="Copy Line From UnSynced"
-          onPress={() => handleCopyLines()}
-        />
-      </View>
-      {/* Editable Lines */}
-      <ScrollView
-        className="flex-1 mt-6"
-        contentContainerStyle={{ paddingBottom: 120 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {lines.map((line, index) => (
-          <View
-            key={index}
-            className="mx-6 my-2 px-4 py-3 rounded-2xl bg-neutral-800/60 border border-neutral-700"
-          >
-            <Text className="text-gray-400 mb-2 text-sm">
-              {`[${String(Math.floor(line.time / 60)).padStart(2, "0")}:${String(
-                Math.floor(line.time % 60)
-              ).padStart(2, "0")}.${String(
-                Math.floor((line.time % 1) * 100)
-              ).padStart(2, "0")}]`}
-            </Text>
-            <TextInput
-              multiline
-              value={line.text}
-              onChangeText={(t) => handleChangeText(index, t)}
-              placeholder="Edit line..."
-              placeholderTextColor="#777"
-              className="text-white text-base"
-            />
-          </View>
-        ))}
-      </ScrollView>
-    </SafeAreaView>
+    <SongScreen
+      title="Edit timed lyrics"
+      song={song}
+      loading={loading}
+      error={error}
+    >
+      <Text style={ui.muted}>
+        Edit each line without changing its timing. Use Sync lyrics to adjust
+        timestamps.
+      </Text>
+      <ActionButton
+        label="Edit plain lyrics"
+        icon="create-outline"
+        variant="secondary"
+        onPress={() =>
+          router.push({ pathname: "/lyrics/edit/[id]", params: { id } })
+        }
+      />
+      <ActionButton
+        label="Copy text from plain lyrics"
+        icon="copy-outline"
+        variant="secondary"
+        disabled={!song?.lyrics || !lines.length}
+        onPress={copy}
+      />
+      {lines.map((line, index) => (
+        <View key={index} style={{ gap: 8 }}>
+          <FormField
+            label={"Line " + (index + 1) + " / " + formatTimestamp(line.time)}
+            multiline
+            style={{ minHeight: 72 }}
+            value={line.text}
+            onChangeText={(text) =>
+              setLines((prev) =>
+                prev.map((value, i) =>
+                  i === index ? { ...value, text } : value
+                )
+              )
+            }
+          />
+        </View>
+      ))}
+      <ActionButton
+        label="Save timed lyrics"
+        icon="checkmark"
+        disabled={!lines.length}
+        loading={busy}
+        onPress={save}
+      />
+    </SongScreen>
   );
 }

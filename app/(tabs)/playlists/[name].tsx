@@ -1,103 +1,55 @@
 import LoadingScreen from "@/components/LoadingScreen";
 import { PlaylistTracksList } from "@/components/PlaylistTracksList";
+import { Screen, ScreenHeader, EmptyState } from "@/components/ui";
 import { usePlaylistStore } from "@/tools/store/usePlayerStore";
 import { Playlist } from "@/types/types";
-import { MaterialIcons } from "@expo/vector-icons";
-import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { toast } from "sonner-native";
 
-const PlaylistScreen = () => {
+export default function PlaylistScreen() {
   const { name: playlistId } = useLocalSearchParams<{ name: string }>();
-  const getPlaylists = usePlaylistStore((s) => s.playlists);
-  const getSpeceficSystemPlaylist = usePlaylistStore(
-    (s) => s.getSpeceficSystemPlaylist
-  );
-
-  const router = useRouter();
-
-  const [playlist, setPlaylist] = useState<Playlist | null | undefined>(
-    undefined
-  );
-
-  // Always update playlist when playlists or route changes, or screen gains focus
+  const playlists = usePlaylistStore((s) => s.playlists);
+  const getSystem = usePlaylistStore((s) => s.getSpeceficSystemPlaylist);
+  const [playlist, setPlaylist] = useState<Playlist | null>();
+  const [error, setError] = useState(false);
   useFocusEffect(
     useCallback(() => {
-      let mounted = true;
-
-      const updatePlaylist = async () => {
-        if (
-          playlistId === "most-played" ||
-          playlistId === "recent" ||
-          playlistId === "history"
-        ) {
-          const p = await getSpeceficSystemPlaylist(playlistId);
-          if (p) {
-            const firstCover = p.songs?.[0]?.coverArt;
-            if (playlistId === "most-played") {
-              p.coverArt =
-                firstCover ??
-                Image.resolveAssetSource(
-                  require("@/assets/images/most-played.png")
-                ).uri;
-            } else if (playlistId === "recent") {
-              p.coverArt =
-                firstCover ??
-                Image.resolveAssetSource(
-                  require("@/assets/images/recent.png")
-                ).uri;
-            } else if (playlistId === "history") {
-              p.coverArt =
-                firstCover ??
-                Image.resolveAssetSource(
-                  require("@/assets/images/history.png")
-                ).uri;
-            }
+      let active = true;
+      setError(false);
+      (async () => {
+        try {
+          const result =
+            playlistId === "most-played" ||
+            playlistId === "recent" ||
+            playlistId === "history"
+              ? await getSystem(playlistId)
+              : playlists.find((p) => p.id === playlistId);
+          if (active) setPlaylist(result ?? null);
+        } catch {
+          if (active) {
+            setError(true);
+            setPlaylist(null);
           }
-          if (mounted) setPlaylist(p ?? null);
-        } else {
-          const found = getPlaylists.find((p) => p.id === playlistId) ?? null;
-          if (mounted) setPlaylist(found);
         }
-      };
-
-      updatePlaylist();
-
+      })();
       return () => {
-        mounted = false;
+        active = false;
       };
-    }, [playlistId, getPlaylists, getSpeceficSystemPlaylist])
+    }, [playlistId, playlists, getSystem])
   );
-
-  if (playlist === undefined) {
-    return <LoadingScreen />;
-  }
-
-  if (!playlist) {
-    console.warn(`Playlist ${playlistId} was not found!`);
-    toast.warning(`Playlist ${playlistId} was not found!`);
-    return <Redirect href={"/(tabs)/playlists"} />;
-  }
-
+  if (playlist === undefined) return <LoadingScreen />;
   return (
-    <SafeAreaView className="flex-1 bg-black px-1" pointerEvents="box-none">
-      <View
-        className="flex-row items-center justify-between px-5 py-3 z-50"
-        style={{ elevation: 10 }}
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={26} color="#ffffff" />
-        </TouchableOpacity>
-        <Text className="text-white text-2xl font-bold">{playlist.name}</Text>
-        <TouchableOpacity>
-          <MaterialIcons name="share" size={26} color="#ffffff" />
-        </TouchableOpacity>
-      </View>
-      <PlaylistTracksList playlist={playlist} playlistName={playlist.name} />
-    </SafeAreaView>
+    <Screen>
+      <ScreenHeader title="Playlist" />
+      {playlist ? (
+        <PlaylistTracksList playlist={playlist} playlistName={playlist.name} />
+      ) : (
+        <EmptyState
+          title={error ? "Could not load playlist" : "Playlist not found"}
+          message="Go back to your playlists and try again."
+          icon="albums-outline"
+        />
+      )}
+    </Screen>
   );
-};
-
-export default PlaylistScreen;
+}

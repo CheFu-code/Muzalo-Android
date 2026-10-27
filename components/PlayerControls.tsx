@@ -1,3 +1,4 @@
+import { muzaloTheme as c } from "@/constants/tokens";
 import { usePlayerStore } from "@/tools/store/usePlayerStore";
 import { FontAwesome6 } from "@expo/vector-icons";
 import React, { useEffect, useRef } from "react";
@@ -17,7 +18,7 @@ export const PlayPauseButton = ({
   classNames,
   iconSize = 30,
   text,
-  color = "#fff",
+  color = c.text,
 }: PlayerButtonsProps) => {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const playPauseMusic = usePlayerStore((s) => s.playPauseMusic);
@@ -30,6 +31,12 @@ export const PlayPauseButton = ({
     <TouchableOpacity
       onPress={handlePlayPause}
       className={classNames}
+      style={{
+        minWidth: 44,
+        minHeight: 44,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
       accessibilityRole="button"
       accessibilityLabel={isPlaying ? "Pause" : "Play"}
     >
@@ -122,6 +129,12 @@ export const SkipToLastButton = ({
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       className={classNames}
+      style={{
+        minWidth: 44,
+        minHeight: 44,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
       accessibilityRole="button"
       accessibilityLabel="Previous track"
       accessibilityHint="Hold to seek backwards"
@@ -199,6 +212,12 @@ export const SkipToNextButton = ({
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       className={classNames}
+      style={{
+        minWidth: 44,
+        minHeight: 44,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
       accessibilityRole="button"
       accessibilityLabel="Next track"
       accessibilityHint="Hold to seek forwards"
@@ -218,12 +237,24 @@ export const ShuffleHandler = ({
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle);
 
   return (
-    <TouchableOpacity onPress={toggleShuffle} className={classNames}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel="Shuffle"
+      accessibilityState={{ selected: shuffle }}
+      onPress={toggleShuffle}
+      className={classNames}
+      style={{
+        minWidth: 44,
+        minHeight: 44,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       <FontAwesome6
         className="text-center"
         name="shuffle"
         size={iconSize}
-        color={shuffle ? "#fff" : "#666"}
+        color={shuffle ? c.accent : c.muted}
       />
     </TouchableOpacity>
   );
@@ -235,6 +266,15 @@ export const RepeatHandler = ({ classNames, iconSize }: PlayerButtonsProps) => {
 
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={"Repeat: " + repeat}
+      accessibilityState={{ selected: repeat !== "off" }}
+      style={{
+        minWidth: 44,
+        minHeight: 44,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
       onPress={toggleRepeat}
       className={`relative ${classNames}`}
     >
@@ -242,7 +282,7 @@ export const RepeatHandler = ({ classNames, iconSize }: PlayerButtonsProps) => {
         className="text-center"
         name="repeat"
         size={iconSize}
-        color={repeat === "off" ? "#666" : "#fff"}
+        color={repeat === "off" ? c.muted : c.accent}
       />
       {repeat === "one" && (
         <View

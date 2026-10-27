@@ -1,129 +1,102 @@
-import { unknownTrackImageUri } from "@/constants/images";
-import { usePlaylistStore } from "@/tools/store/usePlayerStore";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
 import {
-  Image,
+  ActionButton,
+  Artwork,
+  FormField,
+  Screen,
+  ScreenHeader,
+  ui,
+} from "@/components/ui";
+import { MINI_PLAYER_HEIGHT, TAB_BAR_HEIGHT } from "@/constants/tokens";
+import { usePlayerStore, usePlaylistStore } from "@/tools/store/usePlayerStore";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
-// import { usePlaylistStore } from "@/tools/store/usePlaylistStore";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const CreatePlaylist = () => {
+export default function CreatePlaylist() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-
+  const addPlaylist = usePlaylistStore((s) => s.addPlaylist);
+  const hasSong = usePlayerStore((s) => Boolean(s.currentSong));
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-
-  const addPlaylist = usePlaylistStore((s) => s.addPlaylist);
-
-  const handleCreatePlaylist = () => {
-    if (!name.trim()) return;
-    addPlaylist(name.trim(), description);
-    if (router.canDismiss()) {
-      router.dismiss();
-    } else {
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    if (!name.trim() || busy) return;
+    setBusy(true);
+    try {
+      await addPlaylist(name.trim(), description.trim());
       router.back();
+    } catch {
+      Alert.alert("Could not create playlist", "Please try again.");
+    } finally {
+      setBusy(false);
     }
   };
-
   return (
-    <SafeAreaView
-      className="flex-1 bg-black px-6"
-      style={{
-        paddingBottom: insets.bottom === 0 ? 16 : insets.bottom,
-      }}
-    >
+    <Screen>
+      <ScreenHeader title="New playlist" />
       <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1 justify-center"
       >
-        {/* Title */}
-        <Text className="text-3xl font-bold text-white mb-10 text-center">
-          Create Playlist
-        </Text>
-
-        {/* Input field */}
-        <View className="bg-neutral-900 rounded-2xl px-4 py-3 border border-neutral-800 mb-6">
-          <TextInput
-            className="text-white text-lg"
-            placeholder="Playlist name"
-            placeholderTextColor="#666"
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[
+            ui.content,
+            {
+              paddingBottom:
+                insets.bottom +
+                TAB_BAR_HEIGHT +
+                (hasSong ? MINI_PLAYER_HEIGHT : 0) +
+                30,
+            },
+          ]}
+        >
+          <Text style={ui.title}>Make it yours.</Text>
+          <Text style={ui.muted}>Bring your favourite tracks together.</Text>
+          <FormField
+            label="Playlist name"
+            placeholder="Give your playlist a name"
             value={name}
             onChangeText={setName}
             autoFocus
           />
-        </View>
-
-        {/* Input field */}
-        <View className="bg-neutral-900 rounded-2xl px-4 py-3 border border-neutral-800 mb-6">
-          <TextInput
-            className="text-white text-lg"
-            placeholder="Playlist Description"
-            placeholderTextColor="#666"
+          <FormField
+            label="Description (optional)"
+            placeholder="A few words about this collection"
             value={description}
             onChangeText={setDescription}
+            multiline
           />
-        </View>
-
-        {/* Live Preview */}
-        <View className="bg-neutral-900 rounded-2xl p-4 mb-8 border border-neutral-800">
-          <View className="flex-row items-center">
-            {/* Placeholder cover */}
-            <Image
-              source={{ uri: unknownTrackImageUri }}
-              className="w-16 h-16 rounded-lg bg-neutral-800"
-            />
-            <View className="ml-4 flex-1">
-              <Text
-                className={`text-lg font-semibold ${
-                  name.trim() ? "text-white" : "text-neutral-500"
-                }`}
-              >
-                {name.trim() || "New Playlist"}
-              </Text>
-              <Text className="text-neutral-400 text-sm">
-                0 songs • From You {description && ` • ${description}`}
-              </Text>
+          <View
+            style={[
+              ui.card,
+              { flexDirection: "row", alignItems: "center", gap: 14 },
+            ]}
+          >
+            <Artwork size={60} icon="albums-outline" />
+            <View style={{ flex: 1 }}>
+              <Text style={ui.body}>{name.trim() || "New playlist"}</Text>
+              <Text style={ui.muted}>0 songs</Text>
             </View>
           </View>
-        </View>
-
-        {/* Fancy button */}
-        <TouchableOpacity
-          disabled={!name.trim()}
-          onPress={handleCreatePlaylist}
-          activeOpacity={0.8}
-          className={`rounded-2xl overflow-hidden shadow-lg ${
-            !name.trim() ? "opacity-50" : ""
-          }`}
-        >
-          <LinearGradient
-            colors={["#7C3AED", "#4F46E5"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            className="py-4 flex-row justify-center items-center"
-          >
-            <Ionicons name="pulse" size={22} color="white" className="mr-2" />
-            <Text className="text-white text-lg font-semibold">
-              Create Playlist
-            </Text>
-          </LinearGradient>
-        </TouchableOpacity>
+          <ActionButton
+            label="Create playlist"
+            icon="add"
+            disabled={!name.trim()}
+            loading={busy}
+            onPress={save}
+          />
+        </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
-};
-
-export default CreatePlaylist;
+}

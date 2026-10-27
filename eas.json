@@ -1,25 +1,28 @@
 {
-    "build": {
-        "development": {
-            "developmentClient": true,
-            "distribution": "internal",
-            "android": {
-                "buildType": "apk"
-            },
-            "ios": {
-                "resourceClass": "m-medium"
-            }
-        },
-        "preview": {
-            "distribution": "internal"
-        },
-        "production": {
-            "ios": {
-                "resourceClass": "m-medium"
-            }
-        }
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "channel": "development"
     },
-    "cli": {
-        "promptToConfigurePushNotifications": false
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview"
+    },
+    "production": {
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "channel": "production"
     }
+  },
+  "cli": {
+    "promptToConfigurePushNotifications": false
+  }
 }

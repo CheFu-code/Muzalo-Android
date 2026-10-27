@@ -1,22 +1,9 @@
-import { useMemo, useState } from "react";
-import {
-  Alert,
-  Image,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-
-import { unknownTrackImageUri } from "@/constants/images";
+import { Alert } from "react-native";
+import { useRouter } from "expo-router";
 import { usePlaylistStore } from "@/tools/store/usePlayerStore";
 import { Playlist } from "@/types/types";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import QueueControls from "./QueueControls";
-import TracksList from "./TracksList";
+import CollectionTracks from "./CollectionTracks";
+import { ActionButton } from "./ui";
 
 const systemPlaylists = [
   "downloads",
@@ -25,7 +12,6 @@ const systemPlaylists = [
   "favorites",
   "history",
 ];
-
 export const PlaylistTracksList = ({
   playlist,
   playlistName,
@@ -33,192 +19,53 @@ export const PlaylistTracksList = ({
   playlist: Playlist;
   playlistName: string;
 }) => {
-  const [search, setSearch] = useState("");
-
-  const populatePlaylistSong = useMemo(() => {
-    return playlist.songs ?? [];
-  }, [playlist.songs]);
-
-  const filteredPlaylistSongs = useMemo(() => {
-    if (search.trim() === "") return populatePlaylistSong;
-    const lowerSearch = search.toLowerCase();
-    return populatePlaylistSong.filter(
-      (t) =>
-        t?.title?.toLowerCase().includes(lowerSearch) ||
-        t?.artist?.toLowerCase().includes(lowerSearch) ||
-        t?.album?.toLowerCase().includes(lowerSearch)
-    );
-  }, [populatePlaylistSong, search]);
-
   const router = useRouter();
-
-  const insets = useSafeAreaInsets();
-
   const removePlaylist = usePlaylistStore((s) => s.removePlaylist);
   const clearHistory = usePlaylistStore((s) => s.clearHistory);
-
-  const handleDeletePlaylist = (playlistId: string) => {
+  const isHistory = playlist.id === "history";
+  const confirmRemoval = () =>
     Alert.alert(
-      "Delete Playlist",
-      "Are you sure you want to delete this playlist?",
+      isHistory ? "Clear listening history?" : "Delete playlist?",
+      isHistory
+        ? "This removes your playback history. Your music files will stay on your device."
+        : "This removes the playlist. Your music files will stay on your device.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            removePlaylist(playlistId);
-            router.back();
-          },
-        },
-      ]
-    );
-  };
-
-  const handleClearHistory = () => {
-    Alert.alert(
-      "Clear Listening History",
-      "Are you sure you want to clear your playback history?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Clear",
+          text: isHistory ? "Clear" : "Delete",
           style: "destructive",
           onPress: async () => {
-            await clearHistory();
-            router.back();
+            try {
+              if (isHistory) await clearHistory();
+              else await removePlaylist(playlist.id);
+              router.back();
+            } catch {
+              Alert.alert("Could not complete action", "Please try again.");
+            }
           },
         },
       ]
     );
-  };
-
   return (
-    <View
-      className="flex-1"
-      style={{
-        // paddingBottom: insets.bottom + 150,
-        marginBottom: insets.bottom === 0 ? 150 : insets.bottom + 50,
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom + 10,
-        elevation: 4,
-        flex: 1,
-      }}
-    >
-      <View className="absolute left-0 right-0 bg-neutral-900 px-4 pb-2 z-10">
-        <View className="flex-row items-center w-full bg-neutral-800 rounded-lg px-3">
-          <TextInput
-            className="text-white text-base flex-1 py-2"
-            placeholder="Search in Songs in this Playlist"
-            placeholderTextColor="#999"
-            value={search}
-            onChangeText={setSearch}
+    <CollectionTracks
+      title={playlist.name || playlistName}
+      kind="Playlist"
+      tracks={playlist.songs ?? []}
+      artwork={playlist.coverArt || playlist.songs?.[0]?.coverArt}
+      playlistId={playlist.id}
+      subtitle={playlist.userName ? "By " + playlist.userName : undefined}
+      description={playlist.description}
+      actions={
+        !systemPlaylists.includes(playlist.id) ||
+        (isHistory && playlist.songs.length > 0) ? (
+          <ActionButton
+            label={isHistory ? "Clear listening history" : "Delete playlist"}
+            icon="trash-outline"
+            variant="danger"
+            onPress={confirmRemoval}
           />
-          {search ? (
-            <TouchableOpacity
-              className="pl-2 py-2"
-              onPress={() => setSearch("")}
-            >
-              <Ionicons name="close" color="red" size={20} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity className="pl-2 py-2">
-              <Ionicons name="search" color="#fff" size={20} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-      <TracksList
-        // id={generateTracksListId(playlist.name, search)}
-        scrollEnabled={true}
-        hideQueueControls={true}
-        ListHeaderComponentStyle={styles.playlistHeaderContainer}
-        isInPlaylist={true}
-        playlistId={playlist.id}
-        ListHeaderComponent={
-          <View>
-            <View style={styles.artworkImageContainer}>
-              <Image
-                source={{
-                  uri: playlist.coverArt ?? unknownTrackImageUri,
-                }}
-                style={styles.artworkImage}
-              />
-            </View>
-
-            <Text numberOfLines={1} style={styles.playlistNameText}>
-              {playlist.name}
-            </Text>
-
-            <Text
-              numberOfLines={1}
-              className="text-sm mb-3 text-white font-bold text-center"
-            >
-              {playlist.userName && "By"} {playlist.userName}
-            </Text>
-
-            {search.length === 0 && (
-              <QueueControls tracks={populatePlaylistSong} />
-            )}
-            {playlist.id === "history" && populatePlaylistSong.length > 0 && search.length === 0 && (
-              <View className="w-full justify-center items-center mt-3">
-                <TouchableOpacity
-                  onPress={handleClearHistory}
-                  activeOpacity={0.8}
-                  className="px-4 py-2.5 bg-neutral-900 border border-neutral-700/60 rounded-xl flex-row justify-center items-center gap-x-2"
-                >
-                  <Ionicons name="trash-outline" size={17} color="#ef4444" />
-                  <Text className="text-red-400 font-medium text-sm text-center">
-                    Clear Listening History
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            {!systemPlaylists.includes(playlist.id) && (
-              <View className="w-full justify-center items-center">
-                <TouchableOpacity
-                  onPress={() => handleDeletePlaylist(playlist.id)}
-                  activeOpacity={0.8}
-                  className="p-3 bg-[rgba(143,24,24,0.64)] rounded-lg flex-row justify-center items-center gap-x-2"
-                >
-                  <Ionicons name="warning-sharp" size={22} color="#fff" />
-                  <Text className="text-white font-semibold text-lg text-center">
-                    Delete playlist
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        }
-        tracks={filteredPlaylistSongs}
-      />
-    </View>
+        ) : undefined
+      }
+    />
   );
 };
-
-const styles = StyleSheet.create({
-  playlistHeaderContainer: {
-    flex: 1,
-    marginBottom: 32,
-  },
-  artworkImageContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    height: 300,
-    marginTop: 50,
-  },
-  artworkImage: {
-    width: "85%",
-    height: "100%",
-    resizeMode: "cover",
-    borderRadius: 12,
-  },
-  playlistNameText: {
-    color: "#fff",
-    marginTop: 22,
-    marginBottom: 6,
-    textAlign: "center",
-    fontSize: 24,
-    fontWeight: "800",
-  },
-});

@@ -1,153 +1,72 @@
-import { AnimatedButton } from "@/components/AnimatedButton";
+import SongScreen from "@/components/SongScreen";
+import { ActionButton, FormField, ui } from "@/components/ui";
+import { useSongDetails } from "@/hooks/useSongDetails";
 import { usePlayerStore } from "@/tools/store/usePlayerStore";
-import { Song } from "@/types/types";
-import { FontAwesome6, MaterialIcons } from "@expo/vector-icons";
-import { BlurView } from "expo-blur";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-
-const EditLyricsScreen = () => {
+import { useEffect, useState } from "react";
+import { Alert, Text } from "react-native";
+export default function EditLyricsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
-  const getSongInfo = usePlayerStore((s) => s.getSongInfo);
+  const { song, loading, error } = useSongDetails(id);
   const updateLyrics = usePlayerStore((s) => s.setLyrics);
-
-  const [song, setSong] = useState<Song | null>(null);
+  const router = useRouter();
   const [lyrics, setLyrics] = useState("");
-  const [loading, setLoading] = useState(true);
-
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
-    (async () => {
-      if (!id) return;
-      const info = await getSongInfo(id);
-      setSong(info);
-      if (info?.lyrics) setLyrics(info.lyrics);
-      setLoading(false);
-    })();
-  }, [getSongInfo, id]);
-
-  const handlePaste = async () => {
-    const text = await Clipboard.getStringAsync();
-    setLyrics(text);
+    if (song) setLyrics(song.lyrics || "");
+  }, [song]);
+  const save = async () => {
+    if (!song?.id || busy) return;
+    setBusy(true);
+    try {
+      await updateLyrics(song.id, lyrics);
+      router.back();
+    } catch {
+      Alert.alert(
+        "Could not save lyrics",
+        "Your changes are still here. Please try again."
+      );
+    } finally {
+      setBusy(false);
+    }
   };
-
-  const handleSave = async () => {
-    if (!song) return;
-    await updateLyrics(song.id!, lyrics);
-    router.back();
+  const paste = async () => {
+    try {
+      setLyrics(await Clipboard.getStringAsync());
+    } catch {
+      Alert.alert(
+        "Could not paste",
+        "Try typing or pasting directly into the lyrics field."
+      );
+    }
   };
-
-  if (loading)
-    return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <ActivityIndicator color="#fff" size="large" />
-      </View>
-    );
-
-  if (!song)
-    return (
-      <View className="flex-1 items-center justify-center bg-black">
-        <Text className="text-gray-400 text-lg">Song not found</Text>
-      </View>
-    );
-
   return (
-    <SafeAreaView className="flex-1 bg-black b z-50" pointerEvents="box-none">
-      {/* Header */}
-      <View
-        className="flex-row items-center justify-between px-5 pt-3"
-        style={{ elevation: 10 }}
-      >
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={26} color="#fff" />
-        </TouchableOpacity>
-        <Text className="text-white text-lg font-bold">Edit Lyrics</Text>
-        <TouchableOpacity onPress={handleSave}>
-          <FontAwesome6 name="check" size={26} color="#22c55e" />
-        </TouchableOpacity>
-      </View>
-      {/* Background blur */}
-      {song.coverArt && (
-        <Image
-          source={{ uri: song.coverArt }}
-          blurRadius={30}
-          className="absolute w-full h-full"
-        />
-      )}
-      <BlurView intensity={80} tint="dark" className="absolute w-full h-full" />
-
-      <ScrollView
-        className="flex-1 mt-6"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
-      >
-        {/* Header */}
-        <View className="items-center mt-12">
-          {song.coverArt ? (
-            <Image
-              source={{ uri: song.coverArt }}
-              className="w-40 h-40 rounded-2xl shadow-2xl"
-            />
-          ) : (
-            <View className="w-40 h-40 bg-neutral-800 rounded-2xl items-center justify-center">
-              <Text className="text-gray-500">🎵</Text>
-            </View>
-          )}
-          <Text className="text-white text-2xl font-bold mt-4">
-            {song.title || "Unknown Title"}
-          </Text>
-          <Text className="text-gray-400 text-base mt-1">
-            {song.artist || "Unknown Artist"}
-          </Text>
-        </View>
-
-        {/* Lyrics Input */}
-        <View className="mx-5 mt-8">
-          <BlurView
-            intensity={60}
-            tint="dark"
-            className="rounded-2xl overflow-hidden"
-          >
-            <TextInput
-              multiline
-              value={lyrics}
-              onChangeText={setLyrics}
-              placeholder="Type or paste lyrics here..."
-              placeholderTextColor="#888"
-              textAlignVertical="top"
-              className="text-white text-base p-4 h-[300px]"
-            />
-          </BlurView>
-        </View>
-
-        {/* Buttons */}
-        <View className="px-8 space-y-4 gap-y-4 mt-12">
-          <AnimatedButton
-            color="green"
-            label="💾 Save Lyrics"
-            onPress={handleSave}
-          />
-          <AnimatedButton
-            color="cyan"
-            label="📋 Paste from Clipboard"
-            onPress={handlePaste}
-          />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    <SongScreen title="Edit lyrics" song={song} loading={loading} error={error}>
+      <Text style={ui.muted}>
+        Put each lyric on its own line. You can add timing from track details.
+      </Text>
+      <FormField
+        label="Lyrics"
+        multiline
+        style={{ minHeight: 300 }}
+        placeholder="Type or paste lyrics here"
+        value={lyrics}
+        onChangeText={setLyrics}
+      />
+      <ActionButton
+        label="Paste from clipboard"
+        icon="clipboard-outline"
+        variant="secondary"
+        onPress={paste}
+        disabled={busy}
+      />
+      <ActionButton
+        label="Save lyrics"
+        icon="checkmark"
+        onPress={save}
+        loading={busy}
+      />
+    </SongScreen>
   );
-};
-
-export default EditLyricsScreen;
+}
