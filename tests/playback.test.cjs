@@ -153,3 +153,41 @@ test("turning shuffle off restores original upcoming order without restarting au
   assert.equal((await app.native.getProgress()).position, 35);
   assert.equal(app.calls.filter(([name]) => name === "setQueue").length, 1);
 });
+
+test("native duration is saved to the library and queue instead of remaining only in the player clock", async () => {
+  const app = playerHarness([song("a", { duration: 0 }), song("b")]);
+  app.duration(185.4);
+  await app.actions.playSongGeneric(app.state.files[0], {
+    contextQueue: app.state.files,
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(app.state.files[0].duration, 185.4);
+  assert.equal(app.state.queue[0].duration, 185.4);
+  assert.equal(app.state.currentSong.duration, 185.4);
+  await app.actions.syncPlaybackProgress();
+  assert.deepEqual(app.durationWrites, [["a", 185.4]]);
+});
+
+test("zero player duration never erases known length and later progress corrects stale metadata", async () => {
+  const app = playerHarness([song("a", { duration: 17 })]);
+  app.duration(0);
+  await app.actions.playSongGeneric(app.state.files[0]);
+  await app.actions.syncPlaybackProgress();
+  assert.equal(app.state.files[0].duration, 17);
+  app.duration(240);
+  await app.actions.syncPlaybackProgress();
+  assert.equal(app.state.files[0].duration, 240);
+  assert.deepEqual(app.durationWrites, [["a", 240]]);
+});
+
+
+test("duration learned while paused is still saved for the music list", async () => {
+  const app = playerHarness([song("a", { duration: 0 })]);
+  app.duration(0);
+  await app.actions.playSongGeneric(app.state.files[0]);
+  await app.actions.pausePlayback();
+  app.duration(192);
+  await app.actions.syncPlaybackProgress();
+  assert.equal(app.state.files[0].duration, 192);
+  assert.equal(app.state.isPlaying, false);
+});

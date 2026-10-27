@@ -48,6 +48,7 @@ export type PlayerStore = {
   playbackBusy: boolean;
   playbackError: { song: Song | null; message: string } | null;
   syncActiveTrack: (id?: string) => Promise<void>;
+  syncPlaybackProgress: () => Promise<void>;
   reportPlaybackError: (message?: string) => void;
   dismissPlaybackError: () => void;
   resumePlayback: () => Promise<boolean>;

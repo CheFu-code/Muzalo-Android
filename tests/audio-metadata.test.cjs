@@ -165,3 +165,13 @@ test("malformed metadata still returns a track with a safe filename fallback", a
   assert.equal(track.filename, "100% Hits.flac");
   assert.equal(track.uri, uri);
 });
+
+test("the MP3 short-read path uses full file size for CBR duration", async () => {
+  const frame = Buffer.alloc(417);
+  Buffer.from([0xff, 0xfb, 0x90, 0x64]).copy(frame);
+  const bytes = Buffer.concat(Array.from({ length: 10000 }, () => frame));
+  const uri = "file:///Music/Long track.mp3";
+  const { readTagsForContentUri } = nativeMetadata(bytes, uri);
+  const track = await readTagsForContentUri(uri);
+  assert.ok(track.duration > 250 && track.duration < 270, `Duration was ${track.duration}`);
+});

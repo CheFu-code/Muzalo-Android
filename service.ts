@@ -28,8 +28,8 @@ export default async function playbackService() {
     usePlayerStore.setState({ isPlaying: state === State.Playing });
     if (state === State.Playing) run(() => usePlayerStore.getState().syncActiveTrack());
   });
-  TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, ({ position, duration }) => {
-    usePlayerStore.getState().setProgress(position, duration);
+  TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, () => {
+    run(() => usePlayerStore.getState().syncPlaybackProgress());
   });
   TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, ({ track }) => {
     run(() => usePlayerStore.getState().syncActiveTrack(track?.id));

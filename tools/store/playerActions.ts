@@ -1,7 +1,7 @@
 import TrackPlayer, { RepeatMode, State } from "react-native-track-player";
 import { toast } from "sonner-native";
 import type { Song } from "@/types/types";
-import { incrementPlayCountInDB } from "@/tools/db";
+import { incrementPlayCountInDB, updateSongDuration } from "@/tools/db";
 import saveSongMetadata from "@/tools/saveCurrnetSong";
 import {
   nativeTrack,
@@ -22,6 +22,40 @@ export function createPlayerActions(set: SetPlayer, get: () => PlayerStore) {
   let mutating = false;
   let lastCounted: string | null = null;
   let attemptedSong: Song | null = null;
+  const pendingDurations = new Set<string>();
+
+  const rememberDuration = async (id: string, duration: number) => {
+    if (!Number.isFinite(duration) || duration <= 0 || pendingDurations.has(id))
+      return;
+    const source = get().files.find((entry) => songKey(entry) === id);
+    if (
+      !source ||
+      (Number.isFinite(source.duration) &&
+        source.duration > 0 &&
+        Math.round(source.duration) === Math.round(duration))
+    )
+      return;
+    pendingDurations.add(id);
+    try {
+      await updateSongDuration(id, duration);
+      set((state) => ({
+        files: state.files.map((entry) =>
+          songKey(entry) === id ? { ...entry, duration } : entry,
+        ),
+        queue: state.queue.map((entry) =>
+          songKey(entry) === id ? { ...entry, duration } : entry,
+        ),
+        currentSong:
+          state.currentSong && songKey(state.currentSong) === id
+            ? { ...state.currentSong, duration }
+            : state.currentSong,
+      }));
+    } catch (error) {
+      console.warn("Could not save the song duration", error);
+    } finally {
+      pendingDurations.delete(id);
+    }
+  };
 
   const report = (error: unknown, song = get().currentSong) => {
     const failed = error instanceof UnavailableSongError ? error.song : song;
@@ -197,7 +231,9 @@ export function createPlayerActions(set: SetPlayer, get: () => PlayerStore) {
       playbackError: null,
       queueContext: context ? "custom" : get().queueContext,
     });
-    await activate(song, (await TrackPlayer.getProgress()).position, true);
+    const progress = await TrackPlayer.getProgress();
+    await activate(song, progress.position, true);
+    void rememberDuration(songKey(song), progress.duration);
   };
 
   const resume = async () => {
@@ -223,8 +259,10 @@ export function createPlayerActions(set: SetPlayer, get: () => PlayerStore) {
     if (!song) return;
     const state = await TrackPlayer.getPlaybackState();
     const progress = await TrackPlayer.getProgress();
-    if (!mutating)
+    if (!mutating) {
       await activate(song, progress.position, state.state === State.Playing);
+      void rememberDuration(songKey(song), progress.duration);
+    }
   };
 
   return {
@@ -300,6 +338,29 @@ export function createPlayerActions(set: SetPlayer, get: () => PlayerStore) {
         } else await resume();
       }),
     syncActiveTrack,
+    syncPlaybackProgress: async () => {
+      if (mutating) return;
+      const active = await TrackPlayer.getActiveTrack();
+      if (!active) return;
+      const progress = await TrackPlayer.getProgress();
+      const latest = await TrackPlayer.getActiveTrack();
+      const current = get().currentSong;
+      if (
+        mutating ||
+        latest?.id !== active.id ||
+        !current ||
+        songKey(current) !== active.id
+      )
+        return;
+      set({
+        position: progress.position,
+        duration:
+          Number.isFinite(progress.duration) && progress.duration > 0
+            ? progress.duration
+            : current.duration || 0,
+      });
+      await rememberDuration(songKey(current), progress.duration);
+    },
     reportPlaybackError: (message?: string) => {
       report(new Error(message));
       set({ isPlaying: false });

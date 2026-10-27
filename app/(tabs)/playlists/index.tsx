@@ -59,7 +59,7 @@ const PlaylistScreen = () => {
       style={{ flex: 1, backgroundColor: muzaloTheme.background }}
     >
       <View
-        style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}
+        style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 }}
       >
         <View
           style={{

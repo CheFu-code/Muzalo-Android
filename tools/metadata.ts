@@ -12,7 +12,7 @@ const INITIAL_CHUNK_SIZE = 256 * 1024; // 256 KB is sufficient for >95% of ID3 t
 
 export async function readTagsForContentUri(
   uri: string,
-  cacheDir?: string
+  cacheDir?: string,
 ): Promise<Song> {
   let fileUriToCleanup: string | null = null;
   try {
@@ -36,7 +36,7 @@ export async function readTagsForContentUri(
       try {
         const initialChunk = Math.min(
           fileSize || INITIAL_CHUNK_SIZE,
-          INITIAL_CHUNK_SIZE
+          INITIAL_CHUNK_SIZE,
         );
         const base64Chunk = await FileSystem.readAsStringAsync(uri, {
           encoding: FileSystem.EncodingType.Base64,
@@ -63,7 +63,7 @@ export async function readTagsForContentUri(
           // Include extra 8KB for first MPEG audio frames to parse duration from Xing/Info header
           const neededLength = Math.min(
             fileSize || fullTagSize + 8192,
-            fullTagSize + 8192
+            fullTagSize + 8192,
           );
 
           // If tag is larger than our initial chunk, read the complete tag
@@ -79,8 +79,8 @@ export async function readTagsForContentUri(
 
         const metadata = await parseBuffer(
           buffer,
-          { mimeType: "audio/mpeg" },
-          { skipPostHeaders: true }
+          { mimeType: "audio/mpeg", size: fileSize || undefined },
+          { skipPostHeaders: true },
         );
 
         common = metadata.common || {};
@@ -131,16 +131,20 @@ export async function readTagsForContentUri(
           }
         }
 
-        parsedSuccessfully = true;
+        // Untagged CBR files can need a tail read before the parser finalises
+        // duration. Use the ranged-file reader rather than accepting a zero.
+        parsedSuccessfully =
+          Number.isFinite(format.duration) && format.duration > 0;
       } catch (fastPathErr) {
         console.warn(
           "Direct chunk read failed, falling back to copy:",
-          fastPathErr
+          fastPathErr,
         );
       }
     }
 
-    // Containers such as M4A can store tags after the audio, beyond the first chunk.
+    // Read beyond the initial chunk for missing MP3 durations and containers
+    // such as M4A that can store tags after the audio.
     if (!parsedSuccessfully) {
       const readMetadata = (source: string) =>
         readAudioMetadata(
@@ -151,10 +155,10 @@ export async function readTagsForContentUri(
                 position,
                 length,
               }),
-              "base64"
+              "base64",
             ),
           filename,
-          fileSize
+          fileSize,
         );
       let metadata;
       try {
@@ -168,7 +172,7 @@ export async function readTagsForContentUri(
         fileUriToCleanup = await copyContentToCache(
           uri,
           actualCacheDir,
-          `${uuid.v4()}-${filename}`
+          `${uuid.v4()}-${filename}`,
         );
         metadata = await readMetadata(fileUriToCleanup);
       }
@@ -182,7 +186,7 @@ export async function readTagsForContentUri(
     if (common.picture && common.picture.length > 0) {
       coverPath = await saveCoverArtIfNeeded(
         common.picture[0].data,
-        common.album as string
+        common.album as string,
       );
     }
 

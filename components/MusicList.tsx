@@ -11,6 +11,7 @@ import { usePlayerStore } from "@/tools/store/usePlayerStore";
 import { syncLibrary } from "@/tools/syncLibrary";
 import { Song } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import { Linking, Text, TextInput, TouchableOpacity, View } from "react-native";
 import {
@@ -18,13 +19,14 @@ import {
     useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import LibraryControls from "./LibraryControls";
-import { ActionButton } from "./ui";
+import { ActionButton, IconButton } from "./ui";
 
 interface Props {
     currentSong: Song | null;
 }
 
 const MusicList = ({ currentSong }: Props) => {
+    const router = useRouter();
     const files = usePlayerStore((s) => s.files);
     const preferences = useLibraryPreferences();
     const { scanning, access, canAskAgain, error } = useLibraryStore();
@@ -71,6 +73,7 @@ const MusicList = ({ currentSong }: Props) => {
                         
                         
                         <LibraryControls songs={files} />
+                        <IconButton icon="settings-outline" label="Settings and About" onPress={() => router.push("/settings")} />
                     </View>
                 </View>
                 <Text numberOfLines={1} style={{ color: muzaloTheme.muted, fontSize: 12, marginBottom: 12 }}>

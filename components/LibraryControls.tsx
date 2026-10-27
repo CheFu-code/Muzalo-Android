@@ -13,12 +13,12 @@ import {
   Pressable,
 } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ActionButton, IconButton, ui } from "./ui";
+import { IconButton, ui } from "./ui";
 
 export default function LibraryControls({ songs }: { songs: Song[] }) {
   const [open, setOpen] = useState(false);
   const preferences = useLibraryPreferences();
-  const { update, reset } = preferences;
+  const { update } = preferences;
   const insets = useSafeAreaInsets();
   const folders = useMemo(
     () => [...new Set(songs.map(songFolder))].sort(),
@@ -84,31 +84,40 @@ export default function LibraryControls({ songs }: { songs: Song[] }) {
         visible={open}
         transparent
         animationType="slide"
+        statusBarTranslucent
+        navigationBarTranslucent
         onRequestClose={() => setOpen(false)}
       >
         <GestureHandlerRootView
           style={{
             flex: 1,
+            width: "100%",
+            alignItems: "stretch",
             backgroundColor: "rgba(0,0,0,0.7)",
             justifyContent: "flex-end",
-            paddingTop: insets.top + 16,
+            paddingTop: insets.top + 12,
           }}
         >
           <View
             style={{
               backgroundColor: c.surface,
+              width: "100%",
+              height: "90%",
               maxHeight: "100%",
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
-              padding: 20,
-              paddingBottom: Math.max(insets.bottom, 20),
+              overflow: "hidden",
             }}
           >
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                marginBottom: 12,
+                flexShrink: 0,
+                paddingLeft: Math.max(insets.left, 20),
+                paddingRight: Math.max(insets.right, 20),
+                paddingTop: 12,
+                paddingBottom: 8,
               }}
             >
               <Text style={[ui.title, { flex: 1, fontSize: 21 }]}>
@@ -121,8 +130,16 @@ export default function LibraryControls({ songs }: { songs: Song[] }) {
               />
             </View>
             <ScrollView
-              contentContainerStyle={{ gap: 12 }}
+              style={{ flex: 1, minHeight: 0 }}
+              contentContainerStyle={{
+                gap: 12,
+                alignItems: "stretch",
+                paddingLeft: Math.max(insets.left, 20),
+                paddingRight: Math.max(insets.right, 20),
+                paddingBottom: Math.max(insets.bottom, 16) + 16,
+              }}
               keyboardShouldPersistTaps="handled"
+              contentInsetAdjustmentBehavior="never"
             >
               <Text style={ui.label}>Sort songs</Text>
               {(Object.keys(librarySortLabels) as LibrarySort[]).map((sort) =>
@@ -159,78 +176,96 @@ export default function LibraryControls({ songs }: { songs: Song[] }) {
                   <View
                     key={folder}
                     style={{
+                      width: "100%",
                       flexDirection: "row",
                       alignItems: "center",
-                      gap: 8,
+                      gap: 12,
                       paddingVertical: 4,
                     }}
                   >
-                    <Pressable
-                      accessibilityRole="radio"
-                      accessibilityLabel={`Browse ${folder}`}
-                      accessibilityState={{
-                        checked: preferences.folder === folder,
-                      }}
-                      onPress={() =>
-                        update({
-                          folder,
-                          excludedFolders: preferences.excludedFolders.filter(
-                            (entry) => entry !== folder,
-                          ),
-                        })
-                      }
-                      style={({ pressed }) => ({
-                        flex: 1,
-                        minHeight: 48,
-                        justifyContent: "center",
-                        opacity: pressed ? 0.6 : 1,
-                      })}
-                    >
-                      <Text
-                        numberOfLines={1}
-                        style={{
-                          color:
-                            preferences.folder === folder ? c.accent : c.text,
-                          fontWeight: "600",
+                    <View style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                      <Pressable
+                        accessibilityRole="radio"
+                        accessibilityLabel={`Browse ${folder}`}
+                        accessibilityState={{
+                          checked: preferences.folder === folder,
                         }}
+                        onPress={() =>
+                          update({
+                            folder,
+                            excludedFolders: preferences.excludedFolders.filter(
+                              (entry) => entry !== folder,
+                            ),
+                          })
+                        }
+                        style={({ pressed }) => ({
+                          width: "100%",
+                          minWidth: 0,
+                          minHeight: 48,
+                          overflow: "hidden",
+                          justifyContent: "center",
+                          opacity: pressed ? 0.6 : 1,
+                        })}
                       >
-                        {folder.split("/").pop()}
-                      </Text>
-                      <Text
-                        numberOfLines={2}
-                        style={{ color: c.muted, fontSize: 11 }}
-                      >
-                        {folder}
-                      </Text>
-                    </Pressable>
-                    <Text style={ui.muted}>Hide</Text>
-                    <Switch
-                      value={hidden}
-                      accessibilityLabel={`Hide ${folder}`}
-                      trackColor={{ true: c.accent, false: c.border }}
-                      onValueChange={(hide) =>
-                        update({
-                          excludedFolders: hide
-                            ? [...preferences.excludedFolders, folder]
-                            : preferences.excludedFolders.filter(
-                                (entry) => entry !== folder,
-                              ),
-                          folder:
-                            hide && preferences.folder === folder
-                              ? null
-                              : preferences.folder,
-                        })
-                      }
-                    />
+                        <Text
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                          style={{
+                            width: "100%",
+                            flexShrink: 1,
+                            color:
+                              preferences.folder === folder ? c.accent : c.text,
+                            fontWeight: "600",
+                          }}
+                        >
+                          {folder.split("/").pop()}
+                        </Text>
+                        <Text
+                          numberOfLines={2}
+                          ellipsizeMode="tail"
+                          style={{
+                            width: "100%",
+                            flexShrink: 1,
+                            color: c.muted,
+                            fontSize: 11,
+                            marginTop: 3,
+                          }}
+                        >
+                          {folder}
+                        </Text>
+                      </Pressable>
+                    </View>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexShrink: 0,
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Text style={ui.muted}>Hide</Text>
+                      <Switch
+                        value={hidden}
+                        accessibilityLabel={`Hide ${folder}`}
+                        trackColor={{ true: c.accent, false: c.border }}
+                        onValueChange={(hide) =>
+                          update({
+                            excludedFolders: hide
+                              ? [...preferences.excludedFolders, folder]
+                              : preferences.excludedFolders.filter(
+                                  (entry) => entry !== folder,
+                                ),
+                            folder:
+                              hide && preferences.folder === folder
+                                ? null
+                                : preferences.folder,
+                          })
+                        }
+                      />
+                    </View>
                   </View>
                 );
               })}
-              <ActionButton
-                label="Reset library controls"
-                variant="secondary"
-                onPress={reset}
-              />
-              <ActionButton label="Done" onPress={() => setOpen(false)} />
             </ScrollView>
           </View>
         </GestureHandlerRootView>

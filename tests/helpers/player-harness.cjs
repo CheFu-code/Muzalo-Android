@@ -17,7 +17,9 @@ const song = (id, extra = {}) => ({
 function playerHarness(songs = [song("a"), song("b"), song("c")]) {
   const calls = [],
     history = [],
-    messages = [];
+    messages = [],
+    durationWrites = [];
+  let measuredDuration = 120;
   let nativeQueue = [],
     active = -1,
     position = 0,
@@ -41,7 +43,7 @@ function playerHarness(songs = [song("a"), song("b"), song("c")]) {
   const native = {
     getQueue: async () => [...nativeQueue],
     getActiveTrack: async () => nativeQueue[active],
-    getProgress: async () => ({ position, duration: 120 }),
+    getProgress: async () => ({ position, duration: measuredDuration }),
     getPlaybackState: async () => ({
       state: ended ? State.Ended : playing ? State.Playing : State.Paused,
     }),
@@ -130,7 +132,12 @@ function playerHarness(songs = [song("a"), song("b"), song("c")]) {
     path.join(__dirname, "../../tools/store/playerActions.ts"),
     {
       "react-native-track-player": { ...native, State, RepeatMode },
-      "@/tools/db": { incrementPlayCountInDB: async () => {} },
+      "@/tools/db": {
+        incrementPlayCountInDB: async () => {},
+        updateSongDuration: async (id, duration) => {
+          durationWrites.push([id, duration]);
+        },
+      },
       "@/tools/saveCurrnetSong": async () => {},
       "expo-file-system": {
         getInfoAsync: async (uri) => ({ exists: !uri.includes("missing") }),
@@ -160,6 +167,10 @@ function playerHarness(songs = [song("a"), song("b"), song("c")]) {
     calls,
     history,
     messages,
+    durationWrites,
+    duration: (value) => {
+      measuredDuration = value;
+    },
     actions,
     keys: () => nativeQueue.map((entry) => entry.id),
     active: () => nativeQueue[active]?.id,

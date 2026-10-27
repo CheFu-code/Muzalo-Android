@@ -6,6 +6,7 @@ import React from "react";
 import {
   FlatList,
   FlatListProps,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -22,7 +23,7 @@ type PlaylistsListProps = Omit<
   searchQuery?: string;
 };
 
-const ItemDivider = () => <View style={{ height: 10 }} />;
+const ItemDivider = () => <View style={{ height: StyleSheet.hairlineWidth, marginLeft: 56, backgroundColor: muzaloTheme.border, opacity: 0.6 }} />;
 
 const PlaylistsList = ({
   playlists,
@@ -67,7 +68,7 @@ const PlaylistsList = ({
             alignItems: "center",
             justifyContent: "space-between",
             gap: 12,
-            marginBottom: 18,
+            marginBottom: 4,
           }}
         >
           <TouchableOpacity
@@ -79,23 +80,20 @@ const PlaylistsList = ({
               flexDirection: "row",
               alignItems: "center",
               gap: 8,
-              minHeight: 46,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              borderRadius: 14,
-              backgroundColor: muzaloTheme.accent,
+              minHeight: 44,
+              paddingRight: 12,
             }}
           >
             <Ionicons
-              name="add-circle-outline"
+              name="add-outline"
               size={20}
-              color={muzaloTheme.onAccent}
+              color={muzaloTheme.accent}
             />
             <Text
               style={{
-                color: muzaloTheme.onAccent,
+                color: muzaloTheme.accent,
                 fontSize: 14,
-                fontWeight: "700",
+                fontWeight: "600",
               }}
             >
               New playlist

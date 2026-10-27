@@ -15,33 +15,29 @@
         "ios": {
             "supportsTablet": true,
             "infoPlist": {
-                "UIBackgroundModes": ["audio", "audio"]
+                "UIBackgroundModes": [
+                    "audio"
+                ]
             }
         },
         "android": {
             "permissions": [
                 "android.permission.READ_MEDIA_AUDIO",
-                "READ_EXTERNAL_STORAGE",
-                "WRITE_EXTERNAL_STORAGE",
-                "INTERNET",
-                "MODIFY_AUDIO_SETTINGS",
-                "WAKE_LOCK",
-                "FOREGROUND_SERVICE",
-                "android.permission.RECORD_AUDIO",
+                "android.permission.READ_EXTERNAL_STORAGE",
+                "android.permission.WRITE_EXTERNAL_STORAGE",
+                "android.permission.INTERNET",
                 "android.permission.MODIFY_AUDIO_SETTINGS",
-                "READ_EXTERNAL_STORAGE",
-                "WRITE_EXTERNAL_STORAGE",
-                "INTERNET",
-                "MODIFY_AUDIO_SETTINGS",
-                "WAKE_LOCK",
-                "FOREGROUND_SERVICE",
-                "android.permission.RECORD_AUDIO",
-                "android.permission.MODIFY_AUDIO_SETTINGS"
+                "android.permission.WAKE_LOCK",
+                "android.permission.FOREGROUND_SERVICE",
+                "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
             ],
             "blockedPermissions": [
                 "android.permission.READ_MEDIA_IMAGES",
                 "android.permission.READ_MEDIA_VIDEO",
-                "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+                "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+                "android.permission.RECORD_AUDIO",
+                "android.permission.SYSTEM_ALERT_WINDOW",
+                "android.permission.VIBRATE"
             ],
             "package": "co.za.chefu.muzalo",
             "versionCode": 1,
@@ -76,10 +72,16 @@
                     "backgroundColor": "#000000"
                 }
             ],
-            "expo-audio",
+            [
+                "expo-audio",
+                {
+                    "microphonePermission": false
+                }
+            ],
             "react-native-edge-to-edge",
             "expo-sqlite",
-            "./plugins/withMusicWidget"
+            "./plugins/withMusicWidget",
+            "./plugins/withAudioPermissions"
         ],
         "experiments": {
             "typedRoutes": true

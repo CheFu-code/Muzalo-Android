@@ -47,11 +47,8 @@ export const PlaylistListItem = ({
       {...props}
       style={[
         {
-          padding: 12,
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: muzaloTheme.border,
-          backgroundColor: muzaloTheme.surface,
+          minHeight: 64,
+          paddingVertical: 10,
         },
         style,
       ]}
@@ -59,9 +56,9 @@ export const PlaylistListItem = ({
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
         <View
           style={{
-            width: 64,
-            height: 64,
-            borderRadius: 15,
+            width: 44,
+            height: 44,
+            borderRadius: 9,
             overflow: "hidden",
             alignItems: "center",
             justifyContent: "center",
@@ -70,16 +67,16 @@ export const PlaylistListItem = ({
               : muzaloTheme.raised,
           }}
         >
-          {!collectionIcon && playlist.coverArt ? (
+          {!collectionIcon && (playlist.coverArt || playlist.songs?.[0]?.coverArt) ? (
             <Image
-              source={{ uri: playlist.coverArt }}
-              style={{ width: 64, height: 64 }}
+              source={{ uri: playlist.coverArt || playlist.songs?.[0]?.coverArt || undefined }}
+              style={{ width: 44, height: 44 }}
               accessibilityIgnoresInvertColors
             />
           ) : (
             <Ionicons
               name={collectionIcon || "albums-outline"}
-              size={27}
+              size={22}
               color={muzaloTheme.accent}
             />
           )}
@@ -87,24 +84,17 @@ export const PlaylistListItem = ({
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             numberOfLines={1}
-            style={{ color: muzaloTheme.text, fontSize: 16, fontWeight: "600" }}
+            style={{ color: muzaloTheme.text, fontSize: 15, fontWeight: "600" }}
           >
             {playlist.name}
           </Text>
-          {playlist.description ? (
-            <Text
-              numberOfLines={1}
-              style={{ color: muzaloTheme.muted, fontSize: 12, marginTop: 4 }}
-            >
-              {playlist.description}
-            </Text>
-          ) : null}
           <Text
-            style={{ color: muzaloTheme.muted, fontSize: 11, marginTop: 6 }}
+            numberOfLines={1}
+            style={{ color: muzaloTheme.muted, fontSize: 12, marginTop: 4 }}
           >
             {songCount} {songCount === 1 ? "song" : "songs"}
             {hasDuration
-              ? ` / ${formatPlaylistDuration(playlist.duration)}`
+              ? ` · ${formatPlaylistDuration(playlist.duration)}`
               : ""}
           </Text>
         </View>

@@ -1,5 +1,6 @@
 import { unknownTrackImageUri } from "@/constants/images";
 import { muzaloTheme } from "@/constants/tokens";
+import formatDuration from "@/tools/formatDuration";
 import { Song } from "@/types/types";
 import { Entypo, Ionicons } from "@expo/vector-icons";
 import React, { memo } from "react";
@@ -38,6 +39,10 @@ const TracksListItem = memo(
     isInPlaylist,
     playlistId,
   }: TrackListItemProps) => {
+    const duration =
+      Number.isFinite(track.duration) && track.duration > 0
+        ? formatDuration(track.duration)
+        : null;
     const getSubtitle = () => {
       const artist = track.artist ? track.artist : "Unknown Artist";
       if (
@@ -74,7 +79,7 @@ const TracksListItem = memo(
         }}
         underlayColor={muzaloTheme.surface}
         accessibilityRole="button"
-        accessibilityLabel={`Play ${track.title || "Unknown title"} by ${track.artist || "Unknown artist"}`}
+        accessibilityLabel={`Play ${track.title || "Unknown title"} by ${track.artist || "Unknown artist"}${duration ? `, duration ${duration}` : ""}`}
         onPress={() => {
           handlePlaySong(track);
         }}
@@ -129,15 +134,17 @@ const TracksListItem = memo(
             </Text>
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Text
-              style={{
-                color: muzaloTheme.muted,
-                fontSize: 11,
-                fontVariant: ["tabular-nums"],
-              }}
-            >
-              {index + 1}
-            </Text>
+            <View style={{ alignItems: "flex-end", minWidth: 32, gap: 3 }}>
+              <Text
+                style={{
+                  color: muzaloTheme.muted,
+                  fontSize: 11,
+                  fontVariant: ["tabular-nums"],
+                }}
+              >
+                {index + 1}
+              </Text>
+            </View>
             <TrackShortcutsMenu
               track={track}
               isInPlaylist={isInPlaylist}
@@ -146,9 +153,10 @@ const TracksListItem = memo(
               <View
                 style={{
                   width: 44,
-                  height: 44,
+                  height: 50,
                   alignItems: "center",
                   justifyContent: "center",
+                  gap: 3,
                 }}
               >
                 <Entypo
@@ -156,13 +164,18 @@ const TracksListItem = memo(
                   size={18}
                   color={muzaloTheme.muted}
                 />
+                {duration && (
+                  <Text style={{ color: muzaloTheme.muted, fontSize: 11, lineHeight: 14, fontVariant: ["tabular-nums"] }}>
+                    {duration}
+                  </Text>
+                )}
               </View>
             </TrackShortcutsMenu>
           </View>
         </View>
       </TouchableHighlight>
     );
-  }
+  },
 );
 
 TracksListItem.displayName = "TracksListItem";

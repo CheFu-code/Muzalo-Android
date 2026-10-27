@@ -8,7 +8,7 @@ try {
   ({ DatabaseSync } = require("node:sqlite"));
 } catch {}
 
-function database(t) {
+async function database(t) {
   const sql = new DatabaseSync(":memory:");
   t.after(() => sql.close());
   sql.exec(
@@ -18,6 +18,18 @@ function database(t) {
   );
   let failQuery = null;
   const adapter = {
+    execAsync: async (query) => sql.exec(query),
+    closeAsync: async () => {},
+    withTransactionAsync: async (callback) => {
+      sql.exec("BEGIN");
+      try {
+        await callback();
+        sql.exec("COMMIT");
+      } catch (error) {
+        sql.exec("ROLLBACK");
+        throw error;
+      }
+    },
     runAsync: async (query, params = []) => {
       if (failQuery && query.includes(failQuery)) throw Error("Disk full");
       return sql.prepare(query).run(...params);
@@ -42,8 +54,9 @@ function database(t) {
     "react-native-uuid": { v4: () => "new-playlist" },
     "sonner-native": { toast: { error: assert.fail } },
   });
+  await db.initDB();
   sql.exec(
-    "INSERT INTO songs(id,uri,title,lyrics,playCount,lastPlayedAt) VALUES('original','file:///old.mp3','Edited','My lyrics',5,100); INSERT INTO songs(id,uri,title,playCount,lastPlayedAt) VALUES('found','file:///found.mp3','Other title',2,200); INSERT INTO playlists(id,name) VALUES('favorites','Favorites'),('mix','Mix'); INSERT INTO playlist_songs VALUES('favorites','original'),('mix','found');",
+    "INSERT INTO songs(id,uri,title,lyrics,playCount,lastPlayedAt) VALUES('original','file:///old.mp3','Edited','My lyrics',5,100); INSERT INTO songs(id,uri,title,playCount,lastPlayedAt) VALUES('found','file:///found.mp3','Other title',2,200); INSERT OR IGNORE INTO playlists(id,name) VALUES('favorites','Favorites'),('mix','Mix'); INSERT INTO playlist_songs VALUES('favorites','original'),('mix','found');",
   );
   return {
     sql,
@@ -59,7 +72,7 @@ test(
   "metadata and lyrics writes reject database errors and missing tracks",
   options,
   async (t) => {
-    const { db, fail, sql } = database(t);
+    const { db, fail, sql } = await database(t);
     fail("UPDATE songs");
     await assert.rejects(db.editSong("original", "New", "Artist"), /Disk full/);
     await assert.rejects(
@@ -90,10 +103,14 @@ test(
   "playlist creation rejects instead of returning an invented success",
   options,
   async (t) => {
-    const { db, fail, sql } = database(t);
+    const { db, fail, sql } = await database(t);
+    const count = sql.prepare("SELECT count(*) AS n FROM playlists").get().n;
     fail("INSERT INTO playlists");
     await assert.rejects(db.createPlaylist("New"), /Disk full/);
-    assert.equal(sql.prepare("SELECT count(*) AS n FROM playlists").get().n, 2);
+    assert.equal(
+      sql.prepare("SELECT count(*) AS n FROM playlists").get().n,
+      count,
+    );
   },
 );
 
@@ -101,7 +118,7 @@ test(
   "relinking merges playlist references and history while preserving original edits",
   options,
   async (t) => {
-    const { db, sql } = database(t);
+    const { db, sql } = await database(t);
     assert.equal(
       await db.relinkSong("original", "file:///found.mp3", "found.mp3"),
       "found",
@@ -129,7 +146,7 @@ test(
   "a failed relink rolls back the duplicate merge and all playlist changes",
   options,
   async (t) => {
-    const { db, fail, sql } = database(t);
+    const { db, fail, sql } = await database(t);
     fail("UPDATE songs SET uri");
     await assert.rejects(
       db.relinkSong("original", "file:///found.mp3", "found.mp3"),
@@ -153,7 +170,7 @@ test(
   "relinking retains the newly authorised URI when merging a system-library entry",
   options,
   async (t) => {
-    const { db, sql } = database(t);
+    const { db, sql } = await database(t);
     const grantedUri = "content://folder/document/primary%3AMusic%2Ffound.mp3";
     await db.relinkSong("original", grantedUri, "found.mp3", "found");
     assert.equal(
@@ -161,5 +178,32 @@ test(
       grantedUri,
     );
     assert.equal(sql.prepare("SELECT count(*) AS n FROM songs").get().n, 1);
+  },
+);
+
+test(
+  "song durations persist by ID or URI and invalid measurements do not erase them",
+  options,
+  async (t) => {
+    const { db, sql } = await database(t);
+    await db.updateSongDuration("original", 185.4);
+    assert.equal(
+      sql.prepare("SELECT duration FROM songs WHERE id='original'").get()
+        .duration,
+      185.4,
+    );
+    for (const invalid of [0, -1, NaN, Infinity])
+      await db.updateSongDuration("original", invalid);
+    assert.equal(
+      sql.prepare("SELECT duration FROM songs WHERE id='original'").get()
+        .duration,
+      185.4,
+    );
+    await db.updateSongDuration("file:///old.mp3", 190);
+    assert.equal(
+      sql.prepare("SELECT duration FROM songs WHERE id='original'").get()
+        .duration,
+      190,
+    );
   },
 );

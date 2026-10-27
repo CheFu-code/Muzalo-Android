@@ -13,6 +13,7 @@ import React, { useMemo, useState } from "react";
 import {
   FlatList,
   Image,
+  StyleSheet,
   Text,
   TextInput,
   TouchableHighlight,
@@ -48,19 +49,16 @@ function ArtistListItem({ artist }: { artist: Artist }) {
         activeOpacity={0.85}
         underlayColor={muzaloTheme.raised}
         style={{
-          padding: 14,
-          borderRadius: 18,
-          borderWidth: 1,
-          borderColor: muzaloTheme.border,
-          backgroundColor: muzaloTheme.surface,
+          minHeight: 64,
+          paddingVertical: 10,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <View
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
+              width: 44,
+              height: 44,
+              borderRadius: 22,
               overflow: "hidden",
               alignItems: "center",
               justifyContent: "center",
@@ -71,20 +69,20 @@ function ArtistListItem({ artist }: { artist: Artist }) {
               <Image
                 source={{ uri: artist.image! }}
                 onError={() => setFailedImage(artist.image)}
-                style={{ width: 56, height: 56, borderRadius: 28 }}
+                style={{ width: 44, height: 44, borderRadius: 22 }}
                 accessibilityIgnoresInvertColors
               />
             ) : artist.name.toLowerCase() === "unknown artist" ? (
               <Ionicons
                 name="person-outline"
-                size={25}
+                size={21}
                 color={muzaloTheme.accent}
               />
             ) : (
               <Text
                 style={{
                   color: muzaloTheme.accent,
-                  fontSize: 19,
+                  fontSize: 16,
                   fontWeight: "600",
                   letterSpacing: 0.5,
                 }}
@@ -98,7 +96,7 @@ function ArtistListItem({ artist }: { artist: Artist }) {
               numberOfLines={1}
               style={{
                 color: muzaloTheme.text,
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: "600",
               }}
             >
@@ -106,12 +104,12 @@ function ArtistListItem({ artist }: { artist: Artist }) {
             </Text>
             <Text
               numberOfLines={1}
-              style={{ color: muzaloTheme.muted, fontSize: 12, marginTop: 6 }}
+              style={{ color: muzaloTheme.muted, fontSize: 12, marginTop: 4 }}
             >
               {artist.songs.length}{" "}
               {artist.songs.length === 1 ? "song" : "songs"}
               {albumCount > 0
-                ? ` / ${albumCount} ${albumCount === 1 ? "album" : "albums"}`
+                ? ` · ${albumCount} ${albumCount === 1 ? "album" : "albums"}`
                 : ""}
             </Text>
           </View>
@@ -126,7 +124,9 @@ function ArtistListItem({ artist }: { artist: Artist }) {
   );
 }
 
-const ItemSeparator = () => <View style={{ height: 10 }} />;
+const ItemSeparator = () => (
+  <View style={{ height: StyleSheet.hairlineWidth, marginLeft: 56, backgroundColor: muzaloTheme.border, opacity: 0.6 }} />
+);
 
 const ArtistsScreen = () => {
   const files = usePlayerStore((state) => state.files);
@@ -151,7 +151,7 @@ const ArtistsScreen = () => {
       style={{ flex: 1, backgroundColor: muzaloTheme.background }}
     >
       <View
-        style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}
+        style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 }}
       >
         <View
           style={{
@@ -229,7 +229,7 @@ const ArtistsScreen = () => {
               alignItems: "center",
               justifyContent: "space-between",
               gap: 12,
-              paddingBottom: 16,
+              paddingBottom: 8,
             }}
           >
             <Text style={{ color: muzaloTheme.muted, fontSize: 12 }}>

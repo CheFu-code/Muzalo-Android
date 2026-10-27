@@ -24,12 +24,13 @@ test("service registers once and notification actions execute once", async () =>
   const state = Object.fromEntries(
     [
       "resumePlayback",
-        "pausePlayback",
+      "pausePlayback",
       "playAnotherSongInQueue",
       "handleChangeSongPosition",
       "handleForwardPosition",
       "handlebackwardPosition",
       "syncActiveTrack",
+      "syncPlaybackProgress",
       "reportPlaybackError",
       "setProgress",
     ].map((name) => [
@@ -61,7 +62,12 @@ test("service registers once and notification actions execute once", async () =>
   listeners.get("RemoteNext")();
   listeners.get("RemotePlay")();
   listeners.get("PlaybackActiveTrackChanged")({ track: { id: "a" } });
+  listeners.get("PlaybackProgressUpdated")({ position: 12, duration: 180 });
   await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(
+    calls.filter(([name]) => name === "syncPlaybackProgress"),
+    [["syncPlaybackProgress"]],
+  );
   assert.deepEqual(
     calls.filter(([name]) => name === "playAnotherSongInQueue"),
     [["playAnotherSongInQueue", "next"]],
