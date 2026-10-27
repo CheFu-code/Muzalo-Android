@@ -1,0 +1,5 @@
+[
+  { "id": "now-playing", "title": "Now Playing", "androidIcon": "muzalo_shortcut_play", "iosIcon": "play" },
+  { "id": "favourites", "title": "Favourites", "androidIcon": "muzalo_shortcut_heart", "iosIcon": "favorite" },
+  { "id": "search", "title": "Search", "androidIcon": "muzalo_shortcut_search", "iosIcon": "search" }
+]

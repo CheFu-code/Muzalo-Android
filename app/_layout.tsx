@@ -18,6 +18,7 @@ import { toast, Toaster } from "sonner-native";
 import "../global.css";
 
 import playbackService from "@/service";
+import { useAppShortcuts } from "@/tools/useAppShortcuts";
 
 TrackPlayer.registerPlaybackService(() => playbackService);
 
@@ -26,6 +27,7 @@ export default function Layout() {
     "loading",
   );
   const [retry, setRetry] = useState(0);
+  useAppShortcuts(startup === "ready");
   const loadLibrary = usePlayerStore((s) => s.loadLibrary);
   const loadFavorites = usePlaylistStore((s) => s.loadFavorites);
 

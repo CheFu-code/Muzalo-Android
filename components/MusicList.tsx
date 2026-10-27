@@ -11,9 +11,9 @@ import { usePlayerStore } from "@/tools/store/usePlayerStore";
 import { syncLibrary } from "@/tools/syncLibrary";
 import { Song } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
-import { Linking, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { InteractionManager, Linking, Text, TextInput, TouchableOpacity, View } from "react-native";
 import {
     SafeAreaView,
     useSafeAreaInsets,
@@ -32,6 +32,17 @@ const MusicList = ({ currentSong }: Props) => {
     const { scanning, access, canAskAgain, error } = useLibraryStore();
     const scan = () => { void syncLibrary({ requestPermission: true }); };
     const [search, setSearch] = useState("");
+    const searchInput = useRef<TextInput>(null);
+    const consumedSearch = useRef<string | null>(null);
+    const { focusSearch } = useLocalSearchParams<{ focusSearch?: string }>();
+    useFocusEffect(useCallback(() => {
+        if (!focusSearch || consumedSearch.current === focusSearch) return;
+        const task = InteractionManager.runAfterInteractions(() => {
+            searchInput.current?.focus();
+            consumedSearch.current = focusSearch;
+        });
+        return () => task.cancel();
+    }, [focusSearch]));
     const insets = useSafeAreaInsets();
     const filteredTracks = useMemo(() => {
         return selectLibraryTracks(files, preferences, search);
@@ -96,6 +107,7 @@ const MusicList = ({ currentSong }: Props) => {
                         color={muzaloTheme.muted}
                     />
                     <TextInput
+                        ref={searchInput}
                         style={{
                             flex: 1,
                             minWidth: 0,
