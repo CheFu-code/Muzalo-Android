@@ -22,7 +22,7 @@ jobs:
     env:
       CI: '1'
       NODE_ENV: production
-      GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx8g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8'
+      GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8'
       ORG_GRADLE_PROJECT_MUZALO_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ORG_GRADLE_PROJECT_MUZALO_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ORG_GRADLE_PROJECT_MUZALO_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -46,13 +46,16 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm ci --include=dev
 
+      - name: Check Expo dependency compatibility
+        run: npx expo install --check
+
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
       - name: Enable Gradle caching
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-home-cache-cleanup: true
+          cache-cleanup: on-success
 
       - name: Restore release signing key
         env:
