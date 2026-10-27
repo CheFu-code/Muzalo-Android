@@ -1,4 +1,5 @@
 import coverImage from "@/assets/placeholder2.jpg";
+import { muzaloTheme } from "@/constants/tokens";
 import DismissPlayerSymbol from "@/components/DismissPlayerSymbol";
 import {
   PlayPauseButton,
@@ -286,7 +287,7 @@ export default function PlayingScreen() {
                   className="text-white size-12 items-center flex justify-center absolute left-4"
                 >
                   <FontAwesome
-                    color="red"
+                    color={isFavorite ? muzaloTheme.accent : muzaloTheme.muted}
                     name={isFavorite ? "heart" : "heart-o"}
                     size={24}
                   />

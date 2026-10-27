@@ -33,6 +33,7 @@ import { toast } from "sonner-native";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { downloadSongWithSAF } from "../downloadManager";
+import { getAudioExtension } from "../audioFormats";
 import { updateMusicWidget } from "../services/widgetService";
 
 if (!(global as any).Buffer) {
@@ -195,9 +196,10 @@ export const usePlayerStore = create<PlayerStore>()(
 
         const safeTitle =
           file.title?.replace(/[\\/:*?"<>|]/g, "_") || `song_${id}`;
+        const extension = getAudioExtension(remoteUri) ?? getAudioExtension(file.filename) ?? getAudioExtension(file.uri);
         const localUri = await downloadSongWithSAF(
           remoteUri,
-          `${safeTitle}.mp3`
+          `${safeTitle}${extension ?? ""}`
         );
 
         if (localUri) {
@@ -209,6 +211,8 @@ export const usePlayerStore = create<PlayerStore>()(
 
           // Add the track (make sure it includes updated localUri)
           addTrackToPlaylist("downloads", file.id || "");
+        } else {
+          toast.error("Could not download the audio file. Check the source and folder access.");
         }
       },
 

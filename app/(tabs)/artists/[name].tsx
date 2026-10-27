@@ -6,7 +6,7 @@ import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { processMusicData } from ".";
+import { processMusicData } from "@/tools/artists";
 
 const ArtistDetailScreen = () => {
   const { name: artistName } = useLocalSearchParams<{ name: string }>();
@@ -19,11 +19,17 @@ const ArtistDetailScreen = () => {
 
   const uniqueArtists: Artist[] = processMusicData(files);
 
-  const findArtist = uniqueArtists.find((artist) =>
-    (artist.name || "Unknown Artist")
-      .toLowerCase()
-      .includes(decodedName.toLowerCase())
-  );
+  const normalizeName = (value: string) =>
+    value.trim().replace(/\s+/g, " ").toLowerCase();
+  const findArtist =
+    uniqueArtists.find(
+      (artist) =>
+        normalizeName(artist.name) ===
+        normalizeName(artistName || "Unknown Artist")
+    ) ??
+    uniqueArtists.find(
+      (artist) => normalizeName(artist.name) === normalizeName(decodedName)
+    );
 
   if (!findArtist) {
     console.warn(`Artist ${decodedName} not found!`);
@@ -40,7 +46,7 @@ const ArtistDetailScreen = () => {
         <TouchableOpacity onPress={() => router.back()}>
           <MaterialIcons name="arrow-back" size={26} color="#ffffff" />
         </TouchableOpacity>
-        <Text className="text-white text-2xl font-bold">{decodedName}</Text>
+        <Text className="text-white text-2xl font-bold">{findArtist.name}</Text>
         <TouchableOpacity>
           <MaterialIcons name="share" size={26} color="#ffffff" />
         </TouchableOpacity>

@@ -7,6 +7,7 @@ type PlayerButtonsProps = {
   classNames?: string;
   iconSize?: number;
   text?: string;
+  color?: string;
 };
 
 const HOLD_THRESHOLD = 300;
@@ -16,6 +17,7 @@ export const PlayPauseButton = ({
   classNames,
   iconSize = 30,
   text,
+  color = "#fff",
 }: PlayerButtonsProps) => {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const playPauseMusic = usePlayerStore((s) => s.playPauseMusic);
@@ -25,12 +27,17 @@ export const PlayPauseButton = ({
   };
 
   return (
-    <TouchableOpacity onPress={handlePlayPause} className={classNames}>
+    <TouchableOpacity
+      onPress={handlePlayPause}
+      className={classNames}
+      accessibilityRole="button"
+      accessibilityLabel={isPlaying ? "Pause" : "Play"}
+    >
       <View className="flex-row justify-center items-center">
         <FontAwesome6
           name={isPlaying ? "pause" : "play"}
           size={iconSize}
-          color="#fff"
+          color={color}
           style={{ width: iconSize, textAlign: "center" }}
         />
         {text && (
@@ -115,6 +122,9 @@ export const SkipToLastButton = ({
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       className={classNames}
+      accessibilityRole="button"
+      accessibilityLabel="Previous track"
+      accessibilityHint="Hold to seek backwards"
       activeOpacity={0.7}
     >
       <View className="flex-row justify-center items-center">
@@ -189,6 +199,9 @@ export const SkipToNextButton = ({
       onPressIn={onPressIn}
       onPressOut={onPressOut}
       className={classNames}
+      accessibilityRole="button"
+      accessibilityLabel="Next track"
+      accessibilityHint="Hold to seek forwards"
       activeOpacity={0.7}
     >
       <View className="flex-row justify-center items-center">

@@ -1,10 +1,14 @@
 import coverImage from "@/assets/placeholder2.jpg";
+import {
+  MINI_PLAYER_HEIGHT,
+  TAB_BAR_HEIGHT,
+  muzaloTheme,
+} from "@/constants/tokens";
 import { usePlayerStore } from "@/tools/store/usePlayerStore";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Image, Pressable, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import TextTicker from "react-native-text-ticker";
 import {
   PlayPauseButton,
   SkipToLastButton,
@@ -13,77 +17,93 @@ import {
 
 const FloatingPlayer = () => {
   const currentSong = usePlayerStore((s) => s.currentSong);
-  // const isPlaying = usePlayerStore((s) => s.isPlaying);
-
   const router = useRouter();
-
   const insets = useSafeAreaInsets();
-
-  if (!currentSong) {
-    return null;
-  }
-
-  const TAB_BAR_HEIGHT = 50; // match your tab bar style
+  if (!currentSong) return null;
 
   return (
     <View
       style={{
         position: "absolute",
-        left: 8,
-        right: 8,
-        bottom: insets.bottom + TAB_BAR_HEIGHT + 8, // ✅ safe offset
+        left: 12,
+        right: 12,
+        bottom: insets.bottom + TAB_BAR_HEIGHT + 8,
+        height: MINI_PLAYER_HEIGHT,
         zIndex: 50,
+        flexDirection: "row",
+        alignItems: "center",
+        padding: 10,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: muzaloTheme.border,
+        backgroundColor: muzaloTheme.surface,
+        shadowColor: "#000",
+        shadowOpacity: 0.3,
+        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 12,
+        elevation: 8,
       }}
-      className="px-2 flex flex-1 flex-row justify-between items-center bg-[#252525] rounded-xl"
     >
-      <View className="flex flex-1 w-full flex-row px-2 items-center h-24">
-        <Pressable className="" onPress={() => router.navigate("/Playing")}>
-          <Image
-            source={
-              currentSong?.coverArt ? { uri: currentSong.coverArt } : coverImage
-            }
-            alt="Cover Image"
-            className="rounded-lg size-20"
-            width={65}
-            height={65}
-          />
-        </Pressable>
-
-        <Pressable
-          className="ml-1.5 h-24 flex justify-center max-w-[50%]"
-          onPress={() => router.navigate("/Playing")}
-        >
-          <View className="flex-1 justify-center flex-col text-white">
-            <TextTicker
-              duration={11000}
-              loop
-              bounce
-              scroll
-              repeatSpacer={50}
-              className="text-lg font-semibold pl-2 text-white"
-              marqueeDelay={2000}
-            >
-              {currentSong.title}
-            </TextTicker>
-            <TextTicker
-              duration={11000}
-              loop
-              bounce
-              scroll
-              repeatSpacer={50}
-              className="text-lg font-semibold pl-2 text-white"
-              marqueeDelay={2000}
-            >
-              {currentSong.artist}
-            </TextTicker>
-          </View>
-        </Pressable>
-
-        <View className="flex-row items-center gap-x-3 pl-4 h-24 w-[22%] max-w-[22%] right-0 absolute justify-end z-50">
-          <SkipToLastButton iconSize={22} classNames="w-[24px]" />
-          <PlayPauseButton iconSize={24} classNames="w-[24px]" />
-          <SkipToNextButton iconSize={22} classNames="w-[24px]" />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open player for ${currentSong.title || "current track"}`}
+        onPress={() => router.navigate("/Playing")}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          paddingRight: 6,
+        }}
+      >
+        <Image
+          source={
+            currentSong.coverArt ? { uri: currentSong.coverArt } : coverImage
+          }
+          accessibilityIgnoresInvertColors
+          style={{ width: 44, height: 44, borderRadius: 10 }}
+        />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text
+            style={{
+              color: muzaloTheme.accent,
+              fontSize: 8,
+              fontWeight: "700",
+              letterSpacing: 1.2,
+              marginBottom: 3,
+            }}
+          >
+            NOW PLAYING
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={{ color: muzaloTheme.text, fontSize: 13, fontWeight: "600" }}
+          >
+            {currentSong.title || "Unknown title"}
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={{ color: muzaloTheme.muted, fontSize: 11, marginTop: 3 }}
+          >
+            {currentSong.artist || "Unknown artist"}
+          </Text>
         </View>
+      </Pressable>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <SkipToLastButton
+          iconSize={16}
+          classNames="w-11 h-11 items-center justify-center"
+        />
+        <PlayPauseButton
+          iconSize={18}
+          color={muzaloTheme.onAccent}
+          classNames="w-11 h-11 rounded-full bg-[#80DECE] items-center justify-center"
+        />
+        <SkipToNextButton
+          iconSize={16}
+          classNames="w-11 h-11 items-center justify-center"
+        />
       </View>
     </View>
   );

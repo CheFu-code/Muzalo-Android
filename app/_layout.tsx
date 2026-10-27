@@ -1,4 +1,5 @@
 import PlayerBinder from "@/components/PlayerBinder";
+import { muzaloTheme } from "@/constants/tokens";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 import { I18nManager, StatusBar } from "react-native";
@@ -58,10 +59,17 @@ export default function Layout() {
 
   return (
     <SafeAreaProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
+      <GestureHandlerRootView
+        style={{ flex: 1, backgroundColor: muzaloTheme.background }}
+      >
         <PlayerBinder />
         {/* <SafeAreaView style={{ flex: 1 }}> */}
-        <Stack>
+        <Stack
+          screenOptions={{
+            statusBarStyle: "light",
+            contentStyle: { backgroundColor: muzaloTheme.background },
+          }}
+        >
           <Stack.Screen
             name="(tabs)"
             options={{ headerShown: false, headerTitleAlign: "center" }}
@@ -133,7 +141,7 @@ export default function Layout() {
             }}
           />
         </Stack>
-        <StatusBar barStyle={"dark-content"} />
+        <StatusBar barStyle="light-content" />
         <Toaster position="top-center" richColors />
       </GestureHandlerRootView>
     </SafeAreaProvider>

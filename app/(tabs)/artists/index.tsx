@@ -1,7 +1,12 @@
 import LoadingScreen from "@/components/LoadingScreen";
-import { unknownTrackImageUri } from "@/constants/images";
+import {
+  MINI_PLAYER_HEIGHT,
+  TAB_BAR_HEIGHT,
+  muzaloTheme,
+} from "@/constants/tokens";
+import { processMusicData } from "@/tools/artists";
 import { usePlayerStore } from "@/tools/store/usePlayerStore";
-import { Artist, Song } from "@/types/types";
+import { Artist } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -14,147 +19,282 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
-export function processMusicData(musicArray: Song[]) {
-  try {
-    const artistsMap = new Map();
+function ArtistListItem({ artist }: { artist: Artist }) {
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const albumCount = new Set(
+    artist.songs.map((song) => song.album?.trim().toLowerCase()).filter(Boolean)
+  ).size;
+  const initials = artist.name
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => Array.from(part)[0] || "")
+    .join("")
+    .toUpperCase();
+  const showArtwork = artist.image && failedImage !== artist.image;
 
-    musicArray.forEach((song) => {
-      const artistName = song.artist?.toLowerCase();
-      const artistImage = song.coverArt; // Use the song's cover art as the artist image
-      const songData = {
-        title: song.title,
-        uri: song.uri,
-        duration: song.duration,
-        album: song.album,
-        filename: song.filename,
-        coverArt: song.coverArt,
-        artist: song.artist || "Unknown Artist",
-      };
-
-      if (artistsMap.has(artistName)) {
-        // Artist already exists, update the songs array
-        const existingArtist = artistsMap.get(artistName);
-        existingArtist.songs.push(songData);
-      } else {
-        // Create a new artist entry
-        artistsMap.set((artistName || "Unknown Artist")?.toLowerCase(), {
-          name: artistName,
-          image: artistImage,
-          songs: [songData],
-        });
-      }
-    });
-
-    // Convert the map to an array
-    const artistsArray = Array.from(artistsMap.values());
-    return artistsArray;
-  } catch (error) {
-    console.log(error);
-    return [];
-  }
+  return (
+    <Link
+      href={{ pathname: "/artists/[name]", params: { name: artist.name } }}
+      asChild
+    >
+      <TouchableHighlight
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${artist.name}, ${artist.songs.length} ${artist.songs.length === 1 ? "song" : "songs"}`}
+        activeOpacity={0.85}
+        underlayColor={muzaloTheme.raised}
+        style={{
+          padding: 14,
+          borderRadius: 18,
+          borderWidth: 1,
+          borderColor: muzaloTheme.border,
+          backgroundColor: muzaloTheme.surface,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+          <View
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 28,
+              overflow: "hidden",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: muzaloTheme.accentSoft,
+            }}
+          >
+            {showArtwork ? (
+              <Image
+                source={{ uri: artist.image! }}
+                onError={() => setFailedImage(artist.image)}
+                style={{ width: 56, height: 56, borderRadius: 28 }}
+                accessibilityIgnoresInvertColors
+              />
+            ) : artist.name.toLowerCase() === "unknown artist" ? (
+              <Ionicons
+                name="person-outline"
+                size={25}
+                color={muzaloTheme.accent}
+              />
+            ) : (
+              <Text
+                style={{
+                  color: muzaloTheme.accent,
+                  fontSize: 19,
+                  fontWeight: "600",
+                  letterSpacing: 0.5,
+                }}
+              >
+                {initials}
+              </Text>
+            )}
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text
+              numberOfLines={1}
+              style={{
+                color: muzaloTheme.text,
+                fontSize: 16,
+                fontWeight: "600",
+              }}
+            >
+              {artist.name}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={{ color: muzaloTheme.muted, fontSize: 12, marginTop: 6 }}
+            >
+              {artist.songs.length}{" "}
+              {artist.songs.length === 1 ? "song" : "songs"}
+              {albumCount > 0
+                ? ` / ${albumCount} ${albumCount === 1 ? "album" : "albums"}`
+                : ""}
+            </Text>
+          </View>
+          <Ionicons
+            name="chevron-forward"
+            size={17}
+            color={muzaloTheme.muted}
+          />
+        </View>
+      </TouchableHighlight>
+    </Link>
+  );
 }
 
-const ItemSeparatorComponent = () => {
-  return <View className="opacity-30 border-[#9ca3af88] border my-[5px]" />;
-};
+const ItemSeparator = () => <View style={{ height: 10 }} />;
 
 const ArtistsScreen = () => {
-  const files = usePlayerStore((s) => s.files);
-  const isLoading = usePlayerStore((s) => s.isLoading);
-
-  const uniqueArtists: Artist[] = processMusicData(files);
-
+  const files = usePlayerStore((state) => state.files);
+  const isLoading = usePlayerStore((state) => state.isLoading);
+  const hasCurrentSong = usePlayerStore((state) => Boolean(state.currentSong));
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
-
+  const artists = useMemo(() => processMusicData(files), [files]);
   const filteredArtists = useMemo(() => {
-    if (search.trim() === "") return uniqueArtists;
-    const lowerSearch = search.toLowerCase();
-    return uniqueArtists.filter((t) =>
-      (t?.name || "Unknown Artist").toLowerCase().includes(lowerSearch)
-    );
-  }, [uniqueArtists, search]);
+    const term = search.trim().toLowerCase();
+    return term
+      ? artists.filter((artist) => artist.name.toLowerCase().includes(term))
+      : artists;
+  }, [artists, search]);
+  const isSearching = search.trim().length > 0;
 
   if (isLoading) return <LoadingScreen />;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#000]">
-      <View className="absolute left-0 right-0 bg-neutral-900 px-4 pb-2 z-10">
-        <View className="flex-row items-center w-full bg-neutral-800 rounded-lg px-3">
+    <SafeAreaView
+      edges={["left", "right"]}
+      style={{ flex: 1, backgroundColor: muzaloTheme.background }}
+    >
+      <View
+        style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: muzaloTheme.border,
+            backgroundColor: muzaloTheme.surface,
+            paddingLeft: 14,
+          }}
+        >
+          <Ionicons name="search-outline" size={19} color={muzaloTheme.muted} />
           <TextInput
-            className="text-white text-base flex-1 py-2"
-            placeholder="Search in Artists"
-            placeholderTextColor="#999"
+            style={{
+              color: muzaloTheme.text,
+              fontSize: 15,
+              flex: 1,
+              minWidth: 0,
+              minHeight: 48,
+              paddingHorizontal: 10,
+              paddingVertical: 12,
+            }}
+            placeholder="Search artists"
+            placeholderTextColor={muzaloTheme.muted}
+            selectionColor={muzaloTheme.accent}
+            accessibilityLabel="Search artists"
+            autoCorrect={false}
             value={search}
             onChangeText={setSearch}
+            returnKeyType="search"
           />
-          {search ? (
+          {search.length > 0 && (
             <TouchableOpacity
-              className="pl-2 py-2"
+              accessibilityRole="button"
+              accessibilityLabel="Clear artist search"
               onPress={() => setSearch("")}
+              style={{
+                width: 44,
+                minHeight: 48,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <Ionicons name="close" color="red" size={20} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity className="pl-2 py-2">
-              <Ionicons name="search" color="#fff" size={20} />
+              <Ionicons
+                name="close-circle"
+                color={muzaloTheme.muted}
+                size={20}
+              />
             </TouchableOpacity>
           )}
         </View>
       </View>
-
-      <View className="px-6 pt-16">
-        <FlatList
-          data={filteredArtists}
-          scrollEnabled={true}
-          ItemSeparatorComponent={ItemSeparatorComponent}
-          ListFooterComponent={ItemSeparatorComponent}
-          contentContainerStyle={{ paddingTop: 15, paddingBottom: 140 }}
-          ListEmptyComponent={
-            <View>
-              <Text>No Artist Found!</Text>
+      <FlatList
+        style={{ flex: 1 }}
+        data={filteredArtists}
+        keyExtractor={(artist) => artist.name.toLowerCase()}
+        ItemSeparatorComponent={ItemSeparator}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 4,
+          paddingBottom:
+            insets.bottom +
+            TAB_BAR_HEIGHT +
+            (hasCurrentSong ? MINI_PLAYER_HEIGHT + 24 : 24),
+          flexGrow: 1,
+        }}
+        ListHeaderComponent={
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              paddingBottom: 16,
+            }}
+          >
+            <Text style={{ color: muzaloTheme.muted, fontSize: 12 }}>
+              {isSearching ? "Search results" : "In your library"}
+            </Text>
+            <Text style={{ color: muzaloTheme.muted, fontSize: 12 }}>
+              {filteredArtists.length}{" "}
+              {filteredArtists.length === 1 ? "artist" : "artists"}
+            </Text>
+          </View>
+        }
+        ListEmptyComponent={
+          <View
+            style={{
+              alignItems: "center",
+              paddingHorizontal: 20,
+              paddingTop: 44,
+            }}
+          >
+            <View
+              style={{
+                width: 68,
+                height: 68,
+                borderRadius: 22,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: muzaloTheme.accentSoft,
+                marginBottom: 18,
+              }}
+            >
+              <Ionicons
+                name={isSearching ? "search-outline" : "people-outline"}
+                size={30}
+                color={muzaloTheme.accent}
+              />
             </View>
-          }
-          renderItem={({ item: artist }) => {
-            return (
-              <Link
-                href={{
-                  pathname: "/artists/[name]",
-                  params: { name: artist.name || "Unknown Artist" },
-                }}
-                className="text-white"
-                asChild
-              >
-                <TouchableHighlight activeOpacity={0.8}>
-                  <View className="flex-row gap-x-[14px] items-center w-full">
-                    <View className="flex-row gap-x-4 items-center">
-                      <Image
-                        source={{ uri: artist.image ?? unknownTrackImageUri }}
-                        className="rounded-[32px] size-10"
-                      />
-                      <View className="flex-row gap-x-4 justify-between flex-1">
-                        <Text
-                          numberOfLines={1}
-                          className="text-white text-xl max-w-[80%]"
-                        >
-                          {artist.name || "Unknown Artist"}
-                        </Text>
-                        <Text
-                          numberOfLines={1}
-                          className="text-white text-base"
-                        >
-                          {artist.songs.length} songs
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </TouchableHighlight>
-              </Link>
-            );
-          }}
-        />
-      </View>
+            <Text
+              style={{
+                color: muzaloTheme.text,
+                fontSize: 19,
+                fontWeight: "600",
+                textAlign: "center",
+              }}
+            >
+              {isSearching
+                ? "No matching artists"
+                : "Your artists will appear here"}
+            </Text>
+            <Text
+              style={{
+                color: muzaloTheme.muted,
+                fontSize: 14,
+                lineHeight: 22,
+                textAlign: "center",
+                marginTop: 8,
+              }}
+            >
+              {isSearching
+                ? "Try another artist name."
+                : "Artist names are collected from the music files in your library."}
+            </Text>
+          </View>
+        }
+        renderItem={({ item }) => <ArtistListItem artist={item} />}
+      />
     </SafeAreaView>
   );
 };

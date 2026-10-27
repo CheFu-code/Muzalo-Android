@@ -1,10 +1,15 @@
 import LoadingScreen from "@/components/LoadingScreen";
 import PlaylistsList from "@/components/PlaylistsList";
-import { usePlaylistStore } from "@/tools/store/usePlayerStore";
+import {
+  MINI_PLAYER_HEIGHT,
+  TAB_BAR_HEIGHT,
+  muzaloTheme,
+} from "@/constants/tokens";
+import { usePlayerStore, usePlaylistStore } from "@/tools/store/usePlayerStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
-import { Image, TextInput, TouchableOpacity, View } from "react-native";
+import { TextInput, TouchableOpacity, View } from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -12,10 +17,13 @@ import {
 
 const PlaylistScreen = () => {
   const router = useRouter();
-
-  const loadPlaylists = usePlaylistStore((s) => s.loadPlaylists);
-  const isLoading = usePlaylistStore((s) => s.isLoading);
-  const setIsLoading = usePlaylistStore((s) => s.setIsLoading);
+  const insets = useSafeAreaInsets();
+  const loadPlaylists = usePlaylistStore((state) => state.loadPlaylists);
+  const isLoading = usePlaylistStore((state) => state.isLoading);
+  const setIsLoading = usePlaylistStore((state) => state.setIsLoading);
+  const playlists = usePlaylistStore((state) => state.playlists);
+  const hasCurrentSong = usePlayerStore((state) => Boolean(state.currentSong));
+  const [search, setSearch] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -29,109 +37,94 @@ const PlaylistScreen = () => {
           setIsLoading(false);
         }
       };
-
-      fetchPlaylists();
+      void fetchPlaylists();
     }, [loadPlaylists, setIsLoading])
   );
 
-  const getPlaylists = usePlaylistStore((s) => s.playlists);
-  // console.log(getPlaylists);
-  // console.log("getPlaylists", getPlaylists);
-
-  const [search, setSearch] = useState("");
-
   const filteredPlaylists = useMemo(() => {
-    const playlistsWithCovers = getPlaylists.map((s) => {
-      if (s.id === "most-played") {
-        return {
-          ...s,
-          coverArt: Image.resolveAssetSource(
-            require("@/assets/images/most-played.png")
-          ).uri,
-        };
-      }
-      if (s.id === "recent") {
-        return {
-          ...s,
-          coverArt: Image.resolveAssetSource(
-            require("@/assets/images/recent.png")
-          ).uri,
-        };
-      }
-      if (s.id === "downloads") {
-        return {
-          ...s,
-          coverArt: Image.resolveAssetSource(
-            require("@/assets/images/download.png")
-          ).uri,
-        };
-      }
-      if (s.id === "history") {
-        return {
-          ...s,
-          coverArt: Image.resolveAssetSource(
-            require("@/assets/images/history.png")
-          ).uri,
-        };
-      }
-      return s;
-    });
-
-    if (search.trim() === "") return playlistsWithCovers;
-    const lowerSearch = search.toLowerCase();
-    return playlistsWithCovers.filter(
-      (t) =>
-        t?.name?.toLowerCase().includes(lowerSearch) ||
-        t?.description?.toLowerCase().includes(lowerSearch)
+    const term = search.trim().toLowerCase();
+    if (!term) return playlists;
+    return playlists.filter(
+      (playlist) =>
+        playlist.name?.toLowerCase().includes(term) ||
+        playlist.description?.toLowerCase().includes(term)
     );
-  }, [getPlaylists, search]);
-
-  const handlePlaylistPress = (playlistId: string) => {
-    router.push({
-      pathname: "/playlists/[name]",
-      params: { name: playlistId },
-    });
-  };
-  const insets = useSafeAreaInsets();
+  }, [playlists, search]);
 
   if (isLoading) return <LoadingScreen />;
 
   return (
     <SafeAreaView
-      className="flex-1 bg-[#000] px-5"
-      style={{
-        paddingBottom: insets.bottom === 0 ? 10 : insets.bottom - 20,
-        elevation: 2,
-      }}
+      edges={["left", "right"]}
+      style={{ flex: 1, backgroundColor: muzaloTheme.background }}
     >
-      <View className="absolute left-0 right-0 bg-neutral-900 px-4 pb-2 z-10">
-        <View className="flex-row items-center w-full bg-neutral-800 rounded-lg px-3">
+      <View
+        style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14 }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: muzaloTheme.border,
+            backgroundColor: muzaloTheme.surface,
+            paddingLeft: 14,
+          }}
+        >
+          <Ionicons name="search-outline" size={19} color={muzaloTheme.muted} />
           <TextInput
-            className="text-white text-base flex-1 py-2"
-            placeholder="Search in Playlists"
-            placeholderTextColor="#999"
+            style={{
+              color: muzaloTheme.text,
+              fontSize: 15,
+              flex: 1,
+              minWidth: 0,
+              minHeight: 48,
+              paddingHorizontal: 10,
+              paddingVertical: 12,
+            }}
+            placeholder="Search playlists"
+            placeholderTextColor={muzaloTheme.muted}
+            selectionColor={muzaloTheme.accent}
+            accessibilityLabel="Search playlists"
+            autoCorrect={false}
             value={search}
             onChangeText={setSearch}
+            returnKeyType="search"
           />
-          {search ? (
+          {search.length > 0 && (
             <TouchableOpacity
-              className="pl-2 py-2"
+              accessibilityRole="button"
+              accessibilityLabel="Clear playlist search"
               onPress={() => setSearch("")}
+              style={{
+                width: 44,
+                minHeight: 48,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <Ionicons name="close" color="red" size={20} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity className="pl-2 py-2">
-              <Ionicons name="search" color="#fff" size={20} />
+              <Ionicons
+                name="close-circle"
+                color={muzaloTheme.muted}
+                size={20}
+              />
             </TouchableOpacity>
           )}
         </View>
       </View>
-
       <PlaylistsList
         playlists={filteredPlaylists}
-        onPlaylistPress={handlePlaylistPress}
-        scrollEnabled={true}
+        searchQuery={search}
+        onPlaylistPress={(id) =>
+          router.push({ pathname: "/playlists/[name]", params: { name: id } })
+        }
+        contentContainerStyle={{
+          paddingBottom:
+            insets.bottom +
+            TAB_BAR_HEIGHT +
+            (hasCurrentSong ? MINI_PLAYER_HEIGHT + 24 : 24),
+        }}
       />
     </SafeAreaView>
   );

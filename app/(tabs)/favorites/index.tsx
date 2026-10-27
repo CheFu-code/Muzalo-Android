@@ -1,4 +1,5 @@
 import TracksList from "@/components/TracksList";
+import { muzaloTheme } from "@/constants/tokens";
 import { usePlayerStore, usePlaylistStore } from "@/tools/store/usePlayerStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -19,23 +20,26 @@ const FavoritesScreen = () => {
   if (favoriteSongs.length === 0) {
     return (
       <View
-        style={{ paddingBottom: tabBarHeight }}
+        style={{
+          paddingBottom: tabBarHeight,
+          backgroundColor: muzaloTheme.background,
+        }}
         className="flex-1 items-center justify-center bg-black px-6"
       >
-        <Ionicons name="heart-outline" size={92} color="#666" />
+        <Ionicons name="heart-outline" size={64} color={muzaloTheme.accent} />
         <Text className="text-neutral-400 text-xl font-semibold mt-4">
           No favorites yet
         </Text>
         <Text className="text-neutral-500 text-base mt-2 text-center">
-          Tap the <Ionicons name="heart" size={14} color="red" /> on any track
-          to add it here.
+          Tap the <Ionicons name="heart" size={14} color={muzaloTheme.accent} />{" "}
+          on any track to add it here.
         </Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-[#000]">
+    <View style={{ flex: 1, backgroundColor: muzaloTheme.background }}>
       <View className="pb-40 size-full">
         <TracksList
           tracks={favoriteSongs}

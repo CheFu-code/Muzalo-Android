@@ -7,6 +7,9 @@
         "icon": "./assets/images/icon.png",
         "scheme": "music-player",
         "userInterfaceStyle": "dark",
+        "androidStatusBar": {
+            "barStyle": "light-content"
+        },
         "newArchEnabled": false,
         "ios": {
             "supportsTablet": true,

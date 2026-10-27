@@ -1,8 +1,11 @@
 import type { Song } from "@/types/types";
+import { Buffer } from "buffer";
 import * as FileSystem from "expo-file-system";
-import { parseBlob, parseBuffer } from "music-metadata-browser";
+import { parseBuffer } from "music-metadata-browser";
 import uuid from "react-native-uuid";
 import { copyContentToCache, getFilenameFromAnyUri } from "./fileUtils";
+import { getAudioExtension } from "./audioFormats";
+import { readAudioMetadata } from "./audioMetadata";
 import saveCoverArtIfNeeded from "./saveCoverArtIfNeeded";
 
 const INITIAL_CHUNK_SIZE = 256 * 1024; // 256 KB is sufficient for >95% of ID3 tags + first audio frame
@@ -28,113 +31,147 @@ export async function readTagsForContentUri(
 
     let parsedSuccessfully = false;
 
-    // 1️⃣ FAST PATH: Direct in-memory chunk read (no disk copying)
-    try {
-      const initialChunk = Math.min(fileSize || INITIAL_CHUNK_SIZE, INITIAL_CHUNK_SIZE);
-      const base64Chunk = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-        position: 0,
-        length: initialChunk,
-      });
+    // Keep the existing ID3/MPEG optimisation only for MP3 files.
+    if (getAudioExtension(filename) === ".mp3") {
+      try {
+        const initialChunk = Math.min(
+          fileSize || INITIAL_CHUNK_SIZE,
+          INITIAL_CHUNK_SIZE
+        );
+        const base64Chunk = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+          position: 0,
+          length: initialChunk,
+        });
 
-      let buffer = Buffer.from(base64Chunk, "base64");
+        let buffer = Buffer.from(base64Chunk, "base64");
 
-      // Check if file starts with ID3v2 header: 'I' (0x49), 'D' (0x44), '3' (0x33)
-      if (
-        buffer.length >= 10 &&
-        buffer[0] === 0x49 &&
-        buffer[1] === 0x44 &&
-        buffer[2] === 0x33
-      ) {
-        const tagSize =
-          ((buffer[6] & 0x7f) << 21) |
-          ((buffer[7] & 0x7f) << 14) |
-          ((buffer[8] & 0x7f) << 7) |
-          (buffer[9] & 0x7f);
-        const hasFooter = (buffer[5] & 0x10) !== 0;
-        const fullTagSize = 10 + tagSize + (hasFooter ? 10 : 0);
-        // Include extra 8KB for first MPEG audio frames to parse duration from Xing/Info header
-        const neededLength = Math.min(
-          fileSize || fullTagSize + 8192,
-          fullTagSize + 8192
+        // Check if file starts with ID3v2 header: 'I' (0x49), 'D' (0x44), '3' (0x33)
+        if (
+          buffer.length >= 10 &&
+          buffer[0] === 0x49 &&
+          buffer[1] === 0x44 &&
+          buffer[2] === 0x33
+        ) {
+          const tagSize =
+            ((buffer[6] & 0x7f) << 21) |
+            ((buffer[7] & 0x7f) << 14) |
+            ((buffer[8] & 0x7f) << 7) |
+            (buffer[9] & 0x7f);
+          const hasFooter = (buffer[5] & 0x10) !== 0;
+          const fullTagSize = 10 + tagSize + (hasFooter ? 10 : 0);
+          // Include extra 8KB for first MPEG audio frames to parse duration from Xing/Info header
+          const neededLength = Math.min(
+            fileSize || fullTagSize + 8192,
+            fullTagSize + 8192
+          );
+
+          // If tag is larger than our initial chunk, read the complete tag
+          if (neededLength > buffer.length && neededLength <= 5 * 1024 * 1024) {
+            const fullBase64 = await FileSystem.readAsStringAsync(uri, {
+              encoding: FileSystem.EncodingType.Base64,
+              position: 0,
+              length: neededLength,
+            });
+            buffer = Buffer.from(fullBase64, "base64");
+          }
+        }
+
+        const metadata = await parseBuffer(
+          buffer,
+          { mimeType: "audio/mpeg" },
+          { skipPostHeaders: true }
         );
 
-        // If tag is larger than our initial chunk, read the complete tag
-        if (neededLength > buffer.length && neededLength <= 5 * 1024 * 1024) {
-          const fullBase64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-            position: 0,
-            length: neededLength,
-          });
-          buffer = Buffer.from(fullBase64, "base64");
-        }
-      }
+        common = metadata.common || {};
+        format = metadata.format || {};
 
-      const metadata = await parseBuffer(
-        buffer,
-        { mimeType: "audio/mpeg" },
-        { skipPostHeaders: true }
-      );
+        // If ID3v2 had no title, try ID3v1 at the end of the file (last 128 bytes)
+        if (!common.title && fileSize > 128) {
+          try {
+            const id3v1Base64 = await FileSystem.readAsStringAsync(uri, {
+              encoding: FileSystem.EncodingType.Base64,
+              position: fileSize - 128,
+              length: 128,
+            });
+            const v1Buf = Buffer.from(id3v1Base64, "base64");
+            if (
+              v1Buf.length === 128 &&
+              v1Buf.subarray(0, 3).toString("latin1") === "TAG"
+            ) {
+              const v1Title = v1Buf
+                .subarray(3, 33)
+                .toString("latin1")
+                .replace(/\0+$/, "")
+                .trim();
+              const v1Artist = v1Buf
+                .subarray(33, 63)
+                .toString("latin1")
+                .replace(/\0+$/, "")
+                .trim();
+              const v1Album = v1Buf
+                .subarray(63, 93)
+                .toString("latin1")
+                .replace(/\0+$/, "")
+                .trim();
+              const v1Year = v1Buf
+                .subarray(93, 97)
+                .toString("latin1")
+                .replace(/\0+$/, "")
+                .trim();
 
-      common = metadata.common || {};
-      format = metadata.format || {};
-
-      // If ID3v2 had no title, try ID3v1 at the end of the file (last 128 bytes)
-      if (!common.title && fileSize > 128) {
-        try {
-          const id3v1Base64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-            position: fileSize - 128,
-            length: 128,
-          });
-          const v1Buf = Buffer.from(id3v1Base64, "base64");
-          if (
-            v1Buf.length === 128 &&
-            v1Buf.subarray(0, 3).toString("latin1") === "TAG"
-          ) {
-            const v1Title = v1Buf
-              .subarray(3, 33)
-              .toString("latin1")
-              .replace(/\0+$/, "")
-              .trim();
-            const v1Artist = v1Buf
-              .subarray(33, 63)
-              .toString("latin1")
-              .replace(/\0+$/, "")
-              .trim();
-            const v1Album = v1Buf
-              .subarray(63, 93)
-              .toString("latin1")
-              .replace(/\0+$/, "")
-              .trim();
-            const v1Year = v1Buf
-              .subarray(93, 97)
-              .toString("latin1")
-              .replace(/\0+$/, "")
-              .trim();
-
-            if (v1Title && !common.title) common.title = v1Title;
-            if (v1Artist && !common.artist) common.artist = v1Artist;
-            if (v1Album && !common.album) common.album = v1Album;
-            if (v1Year && !common.year)
-              common.year = parseInt(v1Year, 10) || undefined;
+              if (v1Title && !common.title) common.title = v1Title;
+              if (v1Artist && !common.artist) common.artist = v1Artist;
+              if (v1Album && !common.album) common.album = v1Album;
+              if (v1Year && !common.year)
+                common.year = parseInt(v1Year, 10) || undefined;
+            }
+          } catch {
+            // Non-critical: ignore ID3v1 failure
           }
-        } catch {
-          // Non-critical: ignore ID3v1 failure
         }
-      }
 
-      parsedSuccessfully = true;
-    } catch (fastPathErr) {
-      console.warn("Direct chunk read failed, falling back to copy:", fastPathErr);
+        parsedSuccessfully = true;
+      } catch (fastPathErr) {
+        console.warn(
+          "Direct chunk read failed, falling back to copy:",
+          fastPathErr
+        );
+      }
     }
 
-    // 2️⃣ FALLBACK PATH: Copy to cache & parseBlob (only used if direct read fails)
+    // Containers such as M4A can store tags after the audio, beyond the first chunk.
     if (!parsedSuccessfully) {
-      const actualCacheDir = cacheDir || `${FileSystem.cacheDirectory}music-scan/`;
-      fileUriToCleanup = await copyContentToCache(uri, actualCacheDir, filename);
-      const blob = await fetch(fileUriToCleanup).then((res) => res.blob());
-      const metadata = await parseBlob(blob);
+      const readMetadata = (source: string) =>
+        readAudioMetadata(
+          async (position, length) =>
+            Buffer.from(
+              await FileSystem.readAsStringAsync(source, {
+                encoding: FileSystem.EncodingType.Base64,
+                position,
+                length,
+              }),
+              "base64"
+            ),
+          filename,
+          fileSize
+        );
+      let metadata;
+      try {
+        metadata = await readMetadata(uri);
+      } catch {
+        const actualCacheDir =
+          cacheDir || `${FileSystem.cacheDirectory}music-scan/`;
+        await FileSystem.makeDirectoryAsync(actualCacheDir, {
+          intermediates: true,
+        });
+        fileUriToCleanup = await copyContentToCache(
+          uri,
+          actualCacheDir,
+          `${uuid.v4()}-${filename}`
+        );
+        metadata = await readMetadata(fileUriToCleanup);
+      }
       common = metadata.common || {};
       format = metadata.format || {};
     }
@@ -150,8 +187,7 @@ export async function readTagsForContentUri(
     }
 
     const songMetadata: Song = {
-      title:
-        common.title ?? decodeURIComponent(filename.replace(/\.[^/.]+$/, "")),
+      title: common.title ?? filename.replace(/\.[^/.]+$/, ""),
       artist: common.artist ?? null,
       album: common.album ?? null,
       year: common.year ? String(common.year) : null,
@@ -170,10 +206,10 @@ export async function readTagsForContentUri(
   } catch (err) {
     console.warn("Failed to read tags:", err);
 
-    const filename = uri.split("/").pop() || "Unknown";
+    const filename = getFilenameFromAnyUri(uri);
 
     return {
-      title: decodeURIComponent(filename.replace(/\.[^/.]+$/, "")),
+      title: filename.replace(/\.[^/.]+$/, ""),
       artist: null,
       album: null,
       coverArt: null,

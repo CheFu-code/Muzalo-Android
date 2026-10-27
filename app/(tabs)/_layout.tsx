@@ -1,44 +1,47 @@
 import FloatingPlayer from "@/components/FloatingPlayer";
-import { fontSize, useColors } from "@/constants/tokens";
-import {
-  FontAwesome,
-  FontAwesome6,
-  Ionicons,
-  MaterialCommunityIcons,
-} from "@expo/vector-icons";
+import { TAB_BAR_HEIGHT, muzaloTheme } from "@/constants/tokens";
+import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { Tabs } from "expo-router";
 import React from "react";
+import { StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TabsNavigation = () => {
   const insets = useSafeAreaInsets();
-
   return (
     <>
       <Tabs
+        initialRouteName="(songs)"
         screenOptions={{
-          tabBarActiveTintColor: useColors().primary,
-          tabBarLabelStyle: {
-            fontSize: fontSize.xs,
-            fontWeight: "500",
-          },
+          tabBarActiveTintColor: muzaloTheme.accent,
+          tabBarInactiveTintColor: muzaloTheme.muted,
+          tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginTop: 2 },
+          tabBarItemStyle: { paddingTop: 7 },
           headerShown: false,
           tabBarStyle: {
             position: "absolute",
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
-            borderTopWidth: 0,
-            paddingTop: 0,
-            paddingBottom: insets.bottom, // ✅ keep visible above system nav
-            height: 60 + insets.bottom, // ✅ make room for extra padding
+            borderTopWidth: 1,
+            borderTopColor: muzaloTheme.border,
+            paddingBottom: insets.bottom,
+            height: TAB_BAR_HEIGHT + insets.bottom,
             zIndex: 10,
-            backgroundColor: "#000",
+            backgroundColor: muzaloTheme.background,
           },
           tabBarBackground: () => (
             <BlurView
               intensity={40}
-              className="z-10 absolute top-0 bottom-0 left-0 right-0 overflow-hidden rounded-tl-3xl rounded-tr-3xl"
+              tint="dark"
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  borderTopLeftRadius: 20,
+                  borderTopRightRadius: 20,
+                  overflow: "hidden",
+                },
+              ]}
             />
           ),
         }}
@@ -47,8 +50,12 @@ const TabsNavigation = () => {
           name="favorites"
           options={{
             title: "Favorites",
-            tabBarIcon: ({ color }) => (
-              <FontAwesome name="heart" size={20} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? "heart" : "heart-outline"}
+                size={22}
+                color={color}
+              />
             ),
           }}
         />
@@ -56,10 +63,10 @@ const TabsNavigation = () => {
           name="playlists"
           options={{
             title: "Playlists",
-            tabBarIcon: ({ color }) => (
-              <MaterialCommunityIcons
-                name="playlist-play"
-                size={28}
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? "albums" : "albums-outline"}
+                size={22}
                 color={color}
               />
             ),
@@ -69,8 +76,12 @@ const TabsNavigation = () => {
           name="(songs)"
           options={{
             title: "Songs",
-            tabBarIcon: ({ color }) => (
-              <Ionicons name="musical-notes-sharp" size={24} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? "musical-notes" : "musical-notes-outline"}
+                size={22}
+                color={color}
+              />
             ),
           }}
         />
@@ -78,8 +89,12 @@ const TabsNavigation = () => {
           name="artists"
           options={{
             title: "Artists",
-            tabBarIcon: ({ color }) => (
-              <FontAwesome6 name="users-line" size={20} color={color} />
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? "people" : "people-outline"}
+                size={22}
+                color={color}
+              />
             ),
           }}
         />

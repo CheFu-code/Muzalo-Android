@@ -12,7 +12,7 @@ import React, {
 } from "react";
 import { FlatListProps, View } from "react-native";
 import { FlatList } from "react-native-gesture-handler";
-import QueueControls from "./QueueControls";
+import QueueControls, { QUEUE_CONTROLS_HEIGHT } from "./QueueControls";
 import TracksListItem from "./TracksListItem";
 
 export type TracksListProps = Partial<FlatListProps<Song>> & {
@@ -26,9 +26,7 @@ export type TracksListProps = Partial<FlatListProps<Song>> & {
   autoScrollToCurrent?: boolean;
 };
 
-const ItemDivider = () => (
-  <View className="opacity-30 border-[#9ca3af88] border my-[5px] ml-[0px]" />
-);
+const ItemDivider = () => <View style={{ height: 10 }} />;
 
 const TracksList = React.forwardRef<FlatList<Song>, TracksListProps>(
   (
@@ -83,7 +81,7 @@ const TracksList = React.forwardRef<FlatList<Song>, TracksListProps>(
 
         return () => clearTimeout(timer);
       },
-      [autoScrollToCurrent, isLayoutReady, tracks]
+      [autoScrollToCurrent, isLayoutReady, tracks, currentSong, listRef]
     );
 
     const handleLayout = useCallback(() => {
@@ -92,7 +90,7 @@ const TracksList = React.forwardRef<FlatList<Song>, TracksListProps>(
 
     useEffect(() => {
       scrollToCurrentSong(currentSong);
-    }, [scrollKey, scrollToCurrentSong]);
+    }, [scrollKey, scrollToCurrentSong, currentSong]);
 
     useFocusEffect(
       useCallback(() => {
@@ -136,7 +134,11 @@ const TracksList = React.forwardRef<FlatList<Song>, TracksListProps>(
         }}
         getItemLayout={(_, index) => ({
           length: 76,
-          offset: 76 * index,
+          offset:
+            76 * index +
+            (!hideQueueControls && tracks.length > 0
+              ? QUEUE_CONTROLS_HEIGHT
+              : 0),
           index,
         })}
         renderItem={({ item: track, index }) => (

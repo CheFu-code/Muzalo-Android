@@ -1,107 +1,197 @@
 import TracksList from "@/components/TracksList";
+import {
+    MINI_PLAYER_HEIGHT,
+    TAB_BAR_HEIGHT,
+    muzaloTheme,
+} from "@/constants/tokens";
 import { usePlayerStore } from "@/tools/store/usePlayerStore";
 import { Song } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useMemo, useState } from "react";
-import { Animated, TextInput, TouchableOpacity, View } from "react-native";
+import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import {
-  SafeAreaView,
-  useSafeAreaInsets,
+    SafeAreaView,
+    useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
 interface Props {
-  currentSong: Song | null;
+    currentSong: Song | null;
 }
 
 const MusicList = ({ currentSong }: Props) => {
-  const files = usePlayerStore((s) => s.files);
+    const files = usePlayerStore((s) => s.files);
+    const [search, setSearch] = useState("");
+    const insets = useSafeAreaInsets();
+    const filteredTracks = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        if (!term) return files;
+        return files.filter(
+            (track) =>
+                track.title?.toLowerCase().includes(term) ||
+                track.artist?.toLowerCase().includes(term),
+        );
+    }, [files, search]);
 
-  const [search, setSearch] = useState("");
-
-  // Filtered tracks based on search
-  const filteredTracks = useMemo(() => {
-    if (search.trim() === "") return files;
-    const lowerSearch = search.toLowerCase();
-    return files.filter(
-      (t) =>
-        t.title?.toLowerCase().includes(lowerSearch) ||
-        (t.artist && t.artist.toLowerCase().includes(lowerSearch))
-    );
-  }, [files, search]);
-
-  // Animated value for header effects
-  // const scrollY = useRef(new Animated.Value(0)).current;
-
-  // Safe area insets
-  const insets = useSafeAreaInsets();
-
-  // Track scroll offset
-  // const scrollOffset = useRef(0);
-
-  // Store scroll offset on scroll
-  // const handleScroll = Animated.event(
-  //   [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-  //   {
-  //     useNativeDriver: true,
-  //     listener: (event: { nativeEvent: { contentOffset: { y: number } } }) => {
-  //       scrollOffset.current = event.nativeEvent.contentOffset.y;
-  //     },
-  //   }
-  // );
-
-  // Optimize Animated FlatList rendering
-  // const AnimatedTracksList = Animated.createAnimatedComponent(TracksList);
-
-  return (
-    <SafeAreaView
-      className="flex-1 bg-black"
-      style={{ paddingBottom: insets.bottom + 30 }}
-    >
-      {/* Search Bar */}
-      <Animated.View
-        className="absolute left-0 right-0 bg-neutral-900 px-4 pb-2 z-10"
-        style={{ paddingTop: insets.top, elevation: 8 }}
-      >
-        <View className="flex-row items-center w-full bg-neutral-800 rounded-lg px-3">
-          <TextInput
-            className="text-white text-base flex-1 py-2"
-            placeholder="Find in songs"
-            placeholderTextColor="#999"
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search ? (
-            <TouchableOpacity
-              className="pl-2 py-2"
-              onPress={() => setSearch("")}
+    return (
+        <SafeAreaView
+            edges={["top", "left", "right"]}
+            style={{ flex: 1, backgroundColor: muzaloTheme.background }}
+        >
+            <View
+                style={{
+                    paddingHorizontal: 20,
+                    paddingTop: 12,
+                    paddingBottom: 18,
+                }}
             >
-              <Ionicons name="close" color="red" size={20} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity className="pl-2 py-2">
-              <Ionicons name="search" color="#fff" size={20} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </Animated.View>
-
-      {/* Tracks List */}
-      <TracksList
-        tracks={filteredTracks} // ✅ full list OR filtered
-        extraData={currentSong?.id} // ✅ force re-render only when playing song changes
-        search={search}
-        contentContainerStyle={{
-          paddingTop: 72,
-          paddingBottom: 128,
-        }}
-        scrollEventThrottle={16}
-        // onScroll={handleScroll}
-        removeClippedSubviews
-        initialNumToRender={12}
-        windowSize={11}
-      />
-    </SafeAreaView>
-  );
+                <View
+                    style={{
+                        flexDirection: "row",
+                        alignItems: "baseline",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        marginBottom: 18,
+                    }}
+                >
+                    <Text
+                        style={{
+                            color: muzaloTheme.text,
+                            fontSize: 30,
+                            fontWeight: "700",
+                            letterSpacing: -0.8,
+                        }}
+                    >
+                        Your music
+                    </Text>
+                    <Text style={{ color: muzaloTheme.muted, fontSize: 12 }}>
+                        {filteredTracks.length}{" "}
+                        {search.trim()
+                            ? "results"
+                            : filteredTracks.length === 1
+                              ? "track"
+                              : "tracks"}
+                    </Text>
+                </View>
+                <View
+                    style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        borderRadius: 14,
+                        borderWidth: 1,
+                        borderColor: muzaloTheme.border,
+                        backgroundColor: muzaloTheme.surface,
+                        paddingLeft: 14,
+                    }}
+                >
+                    <Ionicons
+                        name="search-outline"
+                        size={19}
+                        color={muzaloTheme.muted}
+                    />
+                    <TextInput
+                        style={{
+                            flex: 1,
+                            minWidth: 0,
+                            minHeight: 48,
+                            color: muzaloTheme.text,
+                            fontSize: 15,
+                            paddingHorizontal: 10,
+                            paddingVertical: 12,
+                        }}
+                        placeholder="Search songs or artists"
+                        placeholderTextColor={muzaloTheme.muted}
+                        selectionColor={muzaloTheme.accent}
+                        accessibilityLabel="Search songs or artists"
+                        autoCorrect={false}
+                        value={search}
+                        onChangeText={setSearch}
+                        returnKeyType="search"
+                    />
+                    {search.length > 0 && (
+                        <TouchableOpacity
+                            accessibilityRole="button"
+                            accessibilityLabel="Clear search"
+                            onPress={() => setSearch("")}
+                            style={{
+                                width: 44,
+                                minHeight: 48,
+                                alignItems: "center",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Ionicons
+                                name="close-circle"
+                                size={20}
+                                color={muzaloTheme.muted}
+                            />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+            <TracksList
+                tracks={filteredTracks}
+                extraData={currentSong?.id}
+                search={search}
+                keyboardDismissMode="on-drag"
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{
+                    paddingBottom:
+                        insets.bottom +
+                        TAB_BAR_HEIGHT +
+                        (currentSong ? MINI_PLAYER_HEIGHT + 24 : 20),
+                    flexGrow: 1,
+                }}
+                ListEmptyComponent={
+                    <View
+                        style={{
+                            alignItems: "center",
+                            paddingHorizontal: 32,
+                            paddingTop: 44,
+                        }}
+                    >
+                        <Ionicons
+                            name={
+                                search.trim()
+                                    ? "search-outline"
+                                    : "musical-notes-outline"
+                            }
+                            size={40}
+                            color={muzaloTheme.accent}
+                        />
+                        <Text
+                            style={{
+                                color: muzaloTheme.text,
+                                fontSize: 19,
+                                fontWeight: "600",
+                                marginTop: 16,
+                            }}
+                        >
+                            {search.trim()
+                                ? "No matching tracks"
+                                : "A little quiet in here"}
+                        </Text>
+                        <Text
+                            style={{
+                                color: muzaloTheme.muted,
+                                fontSize: 14,
+                                lineHeight: 22,
+                                textAlign: "center",
+                                marginTop: 8,
+                            }}
+                        >
+                            {search.trim()
+                                ? "Try another song title or artist name."
+                                : "Your music will appear here when Muzalo scans the folder you allow it to access."}
+                        </Text>
+                    </View>
+                }
+                scrollEventThrottle={16}
+                removeClippedSubviews
+                initialNumToRender={12}
+                windowSize={11}
+            />
+        </SafeAreaView>
+    );
 };
 
 export default MusicList;

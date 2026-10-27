@@ -7,6 +7,27 @@ Enjoy your favorite songs with synced lyrics, manage playlists, and edit lyrics 
 
 ---
 
+## Audio format support
+
+The music-folder scanner accepts **MP3, M4A, AAC, WAV, FLAC, OGG, OGA and Opus**.
+Extensions are recognised without regard to case, including encoded Android
+folder-provider paths. Unsupported file types are left out of the library.
+
+Metadata is read using the matching format. MP3 keeps its short ID3 read path;
+other containers can read tags later in the file using bounded ranged reads.
+If a provider blocks direct reads, the app tries a temporary local copy. A file
+with unreadable tags can still appear with its filename as its title.
+
+Downloads preserve the source/response format and MIME type rather than renaming
+everything to MP3. Files are not transcoded. Playback depends on the native
+player, device codecs, the contents of the container and file integrity; a
+supported extension is not a guarantee for every encoding or protected file.
+
+Run the audio regression checks with `npm run test:audio` and TypeScript checks
+with `npx tsc --noEmit`. The tests include small generated audio fixtures and do
+not require FFmpeg. Native playback, background controls and status-bar appearance
+still need checking on a device.
+
 ## Android development APK with GitHub Actions
 
 The **Android development APK** workflow runs on pushes to `main` or `master`,

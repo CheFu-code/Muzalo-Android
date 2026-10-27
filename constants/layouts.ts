@@ -1,24 +1,26 @@
 import { NativeStackNavigationOptions } from "@react-navigation/native-stack";
+import { muzaloTheme } from "./tokens";
 
 export const StackScreenWithSearchBar: NativeStackNavigationOptions = {
   headerLargeTitle: true,
   headerTitleStyle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "bold",
     color: "#fff",
   },
   headerLargeStyle: {
-    backgroundColor: "#000",
+    backgroundColor: muzaloTheme.background,
   },
   headerLargeTitleStyle: {
     color: "#fff",
-    fontSize: 38,
+    fontSize: 32,
   },
   navigationBarHidden: false,
   headerStyle: {
-    backgroundColor: "#000",
+    backgroundColor: muzaloTheme.background,
   },
-  headerTintColor: "#fff",
+  headerTintColor: muzaloTheme.accent,
+  statusBarStyle: "light",
   headerBlurEffect: "prominent",
   headerShadowVisible: false,
 };

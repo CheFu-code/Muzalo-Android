@@ -1,6 +1,7 @@
 import DismissPlayerSymbol from "@/components/DismissPlayerSymbol";
 import LoadingScreen from "@/components/LoadingScreen";
 import PlaylistsList from "@/components/PlaylistsList";
+import { muzaloTheme } from "@/constants/tokens";
 import { usePlayerStore, usePlaylistStore } from "@/tools/store/usePlayerStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -19,10 +20,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -64,15 +62,13 @@ export default function AddToPlaylist() {
 
   const filteredPlaylists = useMemo(() => {
     if (search.trim() === "") return getPlaylists;
-    const lowerSearch = search.toLowerCase();
+    const lowerSearch = search.trim().toLowerCase();
     return getPlaylists.filter(
       (t) =>
         t?.name?.toLowerCase().includes(lowerSearch) ||
         t?.description?.toLowerCase().includes(lowerSearch)
     );
   }, [getPlaylists, search]);
-
-  const insets = useSafeAreaInsets();
 
   const translateY = useSharedValue(0);
   const router = useRouter();
@@ -121,11 +117,10 @@ export default function AddToPlaylist() {
 
   return (
     <SafeAreaView
-      className="flex-1 h-screen overflow-y-scroll"
+      edges={["top", "left", "right"]}
       style={{
-        paddingBottom: insets.bottom === 0 ? 10 : insets.bottom - 20,
-        // paddingTop: insets.top === 0 ? 30 : insets.top,
-        elevation: 2,
+        flex: 1,
+        backgroundColor: muzaloTheme.background,
       }}
     >
       <Animated.View
@@ -139,14 +134,13 @@ export default function AddToPlaylist() {
       />
       <GestureDetector gesture={panGesture}>
         <Animated.View
-          className="size-full flex-1 overflow-y-scroll"
+          className="flex-1"
           style={[
             {
               flex: 1,
-              backgroundColor: "rgba(0,0,0,0.9)",
+              backgroundColor: muzaloTheme.background,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
-              overflowY: "scroll",
             },
             cardStyle,
           ]}
@@ -154,32 +148,66 @@ export default function AddToPlaylist() {
           <View className="items-center my-8">
             <DismissPlayerSymbol />
           </View>
-          <View className="absolute left-0 right-0 bg-neutral-900 px-4 pb-2 z-10 mt-16">
-            <View className="flex-row items-center w-full bg-neutral-800 rounded-lg px-3">
+          <View style={{ paddingHorizontal: 16, paddingBottom: 14 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: muzaloTheme.border,
+                backgroundColor: muzaloTheme.surface,
+                paddingLeft: 14,
+              }}
+            >
+              <Ionicons
+                name="search-outline"
+                size={19}
+                color={muzaloTheme.muted}
+              />
               <TextInput
-                className="text-white text-base flex-1 py-2"
-                placeholder="Search in Playlists"
-                placeholderTextColor="#999"
+                style={{
+                  color: muzaloTheme.text,
+                  fontSize: 15,
+                  flex: 1,
+                  minWidth: 0,
+                  minHeight: 48,
+                  paddingHorizontal: 10,
+                  paddingVertical: 12,
+                }}
+                placeholder="Search playlists"
+                placeholderTextColor={muzaloTheme.muted}
+                selectionColor={muzaloTheme.accent}
+                accessibilityLabel="Search playlists"
+                autoCorrect={false}
                 value={search}
                 onChangeText={setSearch}
               />
               {search ? (
                 <TouchableOpacity
-                  className="pl-2 py-2"
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear playlist search"
+                  style={{
+                    width: 44,
+                    minHeight: 48,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                   onPress={() => setSearch("")}
                 >
-                  <Ionicons name="close" color="red" size={20} />
+                  <Ionicons
+                    name="close-circle"
+                    color={muzaloTheme.muted}
+                    size={20}
+                  />
                 </TouchableOpacity>
-              ) : (
-                <TouchableOpacity className="pl-2 py-2">
-                  <Ionicons name="search" color="#fff" size={20} />
-                </TouchableOpacity>
-              )}
+              ) : null}
             </View>
           </View>
-          <View className="flex-1 h-screen flex flex-row">
+          <View style={{ flex: 1 }}>
             <PlaylistsList
               playlists={filteredPlaylists}
+              searchQuery={search}
               onPlaylistPress={onPlaylistPress}
               scrollEnabled={true}
             />
