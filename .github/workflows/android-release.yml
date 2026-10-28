@@ -67,6 +67,25 @@ jobs:
           }
           NODE
 
+      - name: Patch Track Player Kotlin nullable Bundle compatibility
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const source = path.join('node_modules', 'react-native-track-player', 'android', 'src', 'main', 'java', 'com', 'doublesymmetry', 'trackplayer', 'module', 'MusicModule.kt');
+          let code = fs.readFileSync(source, 'utf8');
+          const oldTrack = 'Arguments.fromBundle(musicService.tracks[index].originalItem)';
+          const newTrack = 'musicService.tracks[index].originalItem?.let { Arguments.fromBundle(it) }';
+          const oldActive = 'Arguments.fromBundle(\\n                musicService.tracks[musicService.getCurrentTrackIndex()].originalItem\\n            )'.replaceAll('\\n', '\n');
+          const newActive = 'musicService.tracks[musicService.getCurrentTrackIndex()].originalItem?.let { Arguments.fromBundle(it) }';
+          if (!code.includes(oldTrack) || !code.includes(oldActive)) {
+            throw new Error('Track Player Kotlin code differs from expected v4.1.2; refusing unsafe patch');
+          }
+          code = code.replace(oldTrack, newTrack).replace(oldActive, newActive);
+          fs.writeFileSync(source, code);
+          console.log('Patched nullable Bundle conversion in Track Player getTrack/getActiveTrack');
+          NODE
+
       - name: Check Expo dependency compatibility
         run: npx expo install --check
 
