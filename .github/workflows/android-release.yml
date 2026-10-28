@@ -24,6 +24,7 @@ jobs:
     env:
       CI: '1'
       NODE_ENV: production
+      EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK: '1'
       GRADLE_OPTS: '-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8'
       ORG_GRADLE_PROJECT_MUZALO_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ORG_GRADLE_PROJECT_MUZALO_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
