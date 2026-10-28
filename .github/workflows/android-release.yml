@@ -58,18 +58,12 @@ jobs:
           const configPath = path.join(root, 'expo-module.config.json');
           const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
           const android = config.android || {};
-          let fixed = 0;
-          for (const project of android.gradleProjects || []) {
-            if (project.publication && !project.publication.version) {
-              project.publication.version = packageInfo.version;
-              fixed++;
-            }
-          }
-          if (!fixed) {
-            console.log('expo-asset publication metadata needs no repair');
-          } else {
+          if (android.publication && !android.publication.version) {
+            android.publication.version = packageInfo.version;
             fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\\n');
             console.log('Repaired expo-asset publication version:', packageInfo.version);
+          } else {
+            console.log('expo-asset publication metadata needs no repair');
           }
           NODE
 
