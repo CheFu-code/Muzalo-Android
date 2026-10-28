@@ -75,7 +75,8 @@
         "strtok3": "6.3.0",
         "tailwindcss": "^3.4.17",
         "ts-pattern": "^5.8.0",
-        "zustand": "^5.0.8"
+        "zustand": "^5.0.8",
+        "expo-asset": "~57.0.20"
     },
     "devDependencies": {
         "@babel/core": "^7.29.0",
