@@ -60,7 +60,7 @@ jobs:
           const android = config.android || {};
           if (android.publication && !android.publication.version) {
             android.publication.version = packageInfo.version;
-            fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\\n');
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
             console.log('Repaired expo-asset publication version:', packageInfo.version);
           } else {
             console.log('expo-asset publication metadata needs no repair');
