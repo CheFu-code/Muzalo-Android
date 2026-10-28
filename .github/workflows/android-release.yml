@@ -54,39 +54,27 @@ jobs:
 
       - name: Diagnose Expo Android autolinking publications
         run: |
+          npx --no-install expo-modules-autolinking resolve --platform android --json > /tmp/expo-autolinking.json
           node - <<'NODE'
-          const { execFileSync } = require('node:child_process');
-          const commands = [
-            ['node_modules/expo-modules-autolinking/build/index.js', 'resolve', '--platform', 'android', '--json'],
-            ['node_modules/expo-modules-autolinking/build/index.js', 'resolve', '--platform', 'android']
-          ];
-          let data;
-          for (const args of commands) {
-            try {
-              const output = execFileSync('node', args, { encoding: 'utf8' }).trim();
-              if (!output) { console.log('Autolinking command returned no output:', args.join(' ')); continue; }
-              data = JSON.parse(output);
-              break;
-            } catch (error) {
-              console.log('Autolinking diagnostic attempt:', error.message);
-            }
-          }
-          if (!data) {
-            console.log('Unable to obtain Expo autolinking JSON; continuing to Gradle for full error output.');
-          } else {
-            const modules = data.modules || [];
-            console.log('Expo autolinking modules:', modules.length);
-            modules.forEach((mod, i) => {
-              for (const [j, project] of (mod.projects || []).entries()) {
-                if (project.publication && !project.publication.version) {
-                  console.error('Missing publication.version:', JSON.stringify({
-                    index: i, projectIndex: j, packageName: mod.packageName,
-                    packageVersion: mod.packageVersion, publication: project.publication
-                  }));
-                }
+          const fs = require('node:fs');
+          const raw = fs.readFileSync('/tmp/expo-autolinking.json', 'utf8').trim();
+          if (!raw) throw new Error('Expo autolinking CLI returned empty JSON');
+          const data = JSON.parse(raw);
+          const modules = data.modules || [];
+          console.log('Expo autolinking modules:', modules.length);
+          let invalid = 0;
+          modules.forEach((mod, i) => {
+            for (const [j, project] of (mod.projects || []).entries()) {
+              if (project.publication && !project.publication.version) {
+                invalid++;
+                console.error('INVALID EXPO PUBLICATION:', JSON.stringify({
+                  moduleIndex: i, projectIndex: j, module: mod.packageName || mod.name,
+                  path: mod.path, publication: project.publication
+                }));
               }
-            });
-          }
+            }
+          });
+          if (invalid) throw new Error(invalid + ' Expo publication(s) missing version');
           NODE
 
       - name: Enable Gradle caching
