@@ -46,6 +46,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Reconcile npm lockfile with SDK 57 dependencies
+        run: npm install --package-lock-only --ignore-scripts --include=dev --no-audit --no-fund
+
       - name: Install JavaScript dependencies
         run: npm ci --include=dev
 
