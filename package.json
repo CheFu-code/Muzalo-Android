@@ -24,7 +24,7 @@
         "@react-navigation/bottom-tabs": "^7.3.10",
         "@react-navigation/elements": "^2.3.8",
         "@react-navigation/native": "^7.1.6",
-        "@sentry/react-native": "^8.33.0",
+        "@sentry/react-native": "~7.11.0",
         "base64-js": "^1.5.1",
         "buffer": "^6.0.3",
         "expo": "~57.0.31",
