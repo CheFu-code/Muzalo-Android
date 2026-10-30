@@ -19,10 +19,30 @@ import "../global.css";
 
 import playbackService from "@/service";
 import { useAppShortcuts } from "@/tools/useAppShortcuts";
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://7113eec9646ecf5dd92ebd06659acd7f@o4512011915296768.ingest.de.sentry.io/4512344504270928',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 TrackPlayer.registerPlaybackService(() => playbackService);
 
-export default function Layout() {
+export default Sentry.wrap(function Layout() {
   const [startup, setStartup] = useState<"loading" | "ready" | "error">(
     "loading",
   );
@@ -168,4 +188,4 @@ export default function Layout() {
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );
-}
+});

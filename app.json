@@ -1,109 +1,117 @@
 {
-    "expo": {
-        "name": "Muzalo",
-        "slug": "Muzalo",
-        "version": "1.0.0",
-        "orientation": "portrait",
-        "icon": "./assets/images/icon.png",
-        "scheme": "music-player",
-        "userInterfaceStyle": "dark",
-        "androidStatusBar": {
-            "barStyle": "light-content",
-            "backgroundColor": "#000000"
-        },
-        "newArchEnabled": false,
-        "ios": {
-            "supportsTablet": true,
-            "infoPlist": {
-                "UIBackgroundModes": [
-                    "audio"
-                ]
-            }
-        },
-        "android": {
-            "permissions": [
-                "android.permission.READ_MEDIA_AUDIO",
-                "android.permission.READ_EXTERNAL_STORAGE",
-                "android.permission.WRITE_EXTERNAL_STORAGE",
-                "android.permission.INTERNET",
-                "android.permission.MODIFY_AUDIO_SETTINGS",
-                "android.permission.WAKE_LOCK",
-                "android.permission.FOREGROUND_SERVICE",
-                "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
-            ],
-            "blockedPermissions": [
-                "android.permission.READ_MEDIA_IMAGES",
-                "android.permission.READ_MEDIA_VIDEO",
-                "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
-                "android.permission.RECORD_AUDIO",
-                "android.permission.SYSTEM_ALERT_WINDOW",
-                "android.permission.VIBRATE"
-            ],
-            "package": "co.za.chefu.muzalo",
-            "versionCode": 2,
-            "adaptiveIcon": {
-                "foregroundImage": "./assets/images/adaptive-icon.png",
-                "backgroundColor": "#000000"
-            },
-            "edgeToEdgeEnabled": true
-        },
-        "web": {
-            "bundler": "metro",
-            "output": "static",
-            "favicon": "./assets/images/favicon.png"
-        },
-        "plugins": [
-            [
-                "expo-navigation-bar",
-                {
-                    "position": "absolute",
-                    "visibility": "visible",
-                    "behavior": "inset-swipe",
-                    "backgroundColor": "#000000"
-                }
-            ],
-            "expo-router",
-            [
-                "expo-splash-screen",
-                {
-                    "image": "./assets/images/splash-icon.png",
-                    "imageWidth": 200,
-                    "resizeMode": "contain",
-                    "backgroundColor": "#000000"
-                }
-            ],
-            [
-                "expo-audio",
-                {
-                    "microphonePermission": false
-                }
-            ],
-            "react-native-edge-to-edge",
-            "expo-sqlite",
-            "./plugins/withMusicWidget",
-            "./plugins/withAudioPermissions",
-            "./plugins/withAppShortcuts"
-        ],
-        "experiments": {
-            "typedRoutes": true
-        },
-        "extra": {
-            "router": {},
-            "expo-navigation-bar": {
-                "position": "absolute",
-                "visibility": "visible",
-                "behavior": "inset-swipe",
-                "backgroundColor": "#000000"
-            },
-            "eas": {
-                "projectId": "e665d300-e816-431d-91a5-4dd99b4022e3"
-            }
-        },
-        "runtimeVersion": {
-            "policy": "appVersion"
-        },
-        "updates": {
-            "url": "https://u.expo.dev/e665d300-e816-431d-91a5-4dd99b4022e3"
+  "expo": {
+    "name": "Muzalo",
+    "slug": "Muzalo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "music-player",
+    "userInterfaceStyle": "dark",
+    "androidStatusBar": {
+      "barStyle": "light-content",
+      "backgroundColor": "#000000"
+    },
+    "newArchEnabled": false,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
+    },
+    "android": {
+      "permissions": [
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.WAKE_LOCK",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE"
+      ],
+      "package": "co.za.chefu.muzalo",
+      "versionCode": 2,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#000000"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-navigation-bar",
+        {
+          "position": "absolute",
+          "visibility": "visible",
+          "behavior": "inset-swipe",
+          "backgroundColor": "#000000"
         }
+      ],
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#000000"
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
+      ],
+      "react-native-edge-to-edge",
+      "expo-sqlite",
+      "./plugins/withMusicWidget",
+      "./plugins/withAudioPermissions",
+      "./plugins/withAppShortcuts",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "muzalo-android",
+          "organization": "chefu-technologies"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "expo-navigation-bar": {
+        "position": "absolute",
+        "visibility": "visible",
+        "behavior": "inset-swipe",
+        "backgroundColor": "#000000"
+      },
+      "eas": {
+        "projectId": "e665d300-e816-431d-91a5-4dd99b4022e3"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e665d300-e816-431d-91a5-4dd99b4022e3"
     }
+  }
 }
