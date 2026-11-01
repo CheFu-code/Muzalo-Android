@@ -11,26 +11,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { initDB } from "@/tools/db";
-import { setupPlayer } from "@/tools/services/trackPlayerService";
 import { usePlayerStore, usePlaylistStore } from "@/tools/store/usePlayerStore";
-import TrackPlayer from "react-native-track-player";
 import { toast, Toaster } from "sonner-native";
 import "../global.css";
 
-import playbackService from "@/service";
 import { useAppShortcuts } from "@/tools/useAppShortcuts";
-import * as Sentry from '@sentry/react-native';
-
-Sentry.init({
-  dsn: 'https://7113eec9646ecf5dd92ebd06659acd7f@o4512011915296768.ingest.de.sentry.io/4512344504270928',
-
-  // Keep startup reporting minimal: optional native replay/feedback integrations
-  // can fail before the first screen renders on some Android devices.
-  sendDefaultPii: false,
-  enableLogs: true,
-});
-
-TrackPlayer.registerPlaybackService(() => playbackService);
+import * as Sentry from "@sentry/react-native";
 
 export default Sentry.wrap(function Layout() {
   const [startup, setStartup] = useState<"loading" | "ready" | "error">(
@@ -61,13 +47,6 @@ export default Sentry.wrap(function Layout() {
     };
   }, [loadFavorites, loadLibrary, retry]);
 
-  useEffect(() => {
-    void setupPlayer().catch(() => {
-      toast.error(
-        "The audio player could not start. Close and reopen Muzalo to try again.",
-      );
-    });
-  }, []);
 
   if (I18nManager.isRTL) {
     I18nManager.allowRTL(false);
