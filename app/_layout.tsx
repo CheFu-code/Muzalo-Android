@@ -12,7 +12,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { initDB } from "@/tools/db";
 import { usePlayerStore, usePlaylistStore } from "@/tools/store/usePlayerStore";
-import { toast, Toaster } from "sonner-native";
+import { Toaster } from "sonner-native";
 import "../global.css";
 
 import { useAppShortcuts } from "@/tools/useAppShortcuts";
