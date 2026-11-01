@@ -41,6 +41,14 @@ export default function EditLyricsScreen() {
       );
     }
   };
+  const exportBackup = async () => {
+    try {
+      await Clipboard.setStringAsync(lyrics);
+      Alert.alert("Lyrics backup copied", "The plain lyrics were copied to your clipboard.");
+    } catch {
+      Alert.alert("Could not export lyrics", "Please try again.");
+    }
+  };
   return (
     <SongScreen title="Edit lyrics" song={song} loading={loading} error={error}>
       <Text style={ui.muted}>
@@ -60,6 +68,13 @@ export default function EditLyricsScreen() {
         variant="secondary"
         onPress={paste}
         disabled={busy}
+      />
+      <ActionButton
+        label="Copy lyrics backup"
+        icon="download-outline"
+        variant="secondary"
+        onPress={exportBackup}
+        disabled={!lyrics || busy}
       />
       <ActionButton
         label="Save lyrics"

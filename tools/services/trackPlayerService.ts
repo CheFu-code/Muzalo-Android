@@ -12,7 +12,16 @@ export function setupPlayer() {
 }
 
 async function initialize() {
-  try { await TrackPlayer.setupPlayer(); }
+  try {
+    await TrackPlayer.setupPlayer({
+      // Keep enough media buffered for native queue transitions to remain
+      // gapless when the source and platform support it.
+      minBuffer: 30,
+      maxBuffer: 120,
+      playBuffer: 2.5,
+      autoHandleInterruptions: true,
+    });
+  }
   catch (error) {
     if ((error as { code?: string }).code !== "player_already_initialized") throw error;
   }
@@ -21,6 +30,7 @@ async function initialize() {
     progressUpdateEventInterval: 1,
     android: {
       appKilledPlaybackBehavior: AppKilledPlaybackBehavior.ContinuePlayback,
+      alwaysPauseOnInterruption: true,
     },
     capabilities: [
       Capability.SkipToPrevious,

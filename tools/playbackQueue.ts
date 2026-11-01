@@ -36,7 +36,9 @@ export async function playableUri(song: Song): Promise<string> {
   ] as string[]) {
     if (!uri.startsWith("file://")) return uri;
     try {
-      if ((await FileSystem.getInfoAsync(uri)).exists) return uri;
+      const info = await FileSystem.getInfoAsync(uri);
+      if (info.exists && (!("size" in info) || info.size == null || info.size > 0))
+        return uri;
     } catch {
       /* Try the original source if a downloaded copy is inaccessible. */
     }

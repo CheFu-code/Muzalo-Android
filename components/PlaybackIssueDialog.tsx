@@ -141,9 +141,21 @@ export default function PlaybackIssueDialog() {
               variant="secondary"
               loading={busy}
               onPress={() => {
-                setBusy(true);
-                void syncLibrary({ requestPermission: true }).finally(() =>
-                  setBusy(false),
+                Alert.alert(
+                  "Allow access to your music?",
+                  "Muzalo needs audio access to find supported music already stored on this device. Your music files are not uploaded by the library scan.",
+                  [
+                    { text: "Not now", style: "cancel" },
+                    {
+                      text: "Continue",
+                      onPress: () => {
+                        setBusy(true);
+                        void syncLibrary({ requestPermission: true }).finally(() =>
+                          setBusy(false),
+                        );
+                      },
+                    },
+                  ],
                 );
               }}
             />

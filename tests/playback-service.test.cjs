@@ -6,6 +6,7 @@ const load = require("./helpers/load-typescript.cjs");
 test("service registers once and notification actions execute once", async () => {
   const listeners = new Map(),
     calls = [];
+  let resetCount = 0;
   const events = [
     "RemotePlay",
     "RemotePause",
@@ -49,6 +50,9 @@ test("service registers once and notification actions execute once", async () =>
         listeners.set(event, action);
       },
       pause: async () => calls.push(["pause"]),
+      reset: async () => {
+        resetCount++;
+      },
     },
     "./tools/store/usePlayerStore": {
       usePlayerStore: {
@@ -59,6 +63,7 @@ test("service registers once and notification actions execute once", async () =>
   }).default;
   await service();
   await service();
+  assert.equal(resetCount, 1);
   listeners.get("RemoteNext")();
   listeners.get("RemotePlay")();
   listeners.get("PlaybackActiveTrackChanged")({ track: { id: "a" } });
@@ -83,4 +88,15 @@ test("service registers once and notification actions execute once", async () =>
   listeners.get("PlaybackError")({ message: "File missing" });
   assert.equal(state.isPlaying, undefined);
   assert.deepEqual(calls.at(-1), ["reportPlaybackError", "File missing"]);
+  state.isPlaying = true;
+  listeners.get("RemoteDuck")({ paused: true, permanent: false });
+  await new Promise((resolve) => setImmediate(resolve));
+  listeners.get("RemoteDuck")({ paused: false, permanent: false });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(
+    calls
+      .filter(([name]) => name === "pausePlayback" || name === "resumePlayback")
+      .slice(-2),
+    [["pausePlayback"], ["resumePlayback"]],
+  );
 });

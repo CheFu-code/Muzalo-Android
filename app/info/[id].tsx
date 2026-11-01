@@ -13,6 +13,7 @@ export default function SongInfoScreen() {
     const { song, loading, error, refresh } = useSongDetails(id);
     const router = useRouter();
     const setLyrics = usePlayerStore((s) => s.setLyrics);
+    const deleteDownloadedFile = usePlayerStore((s) => s.deleteDownloadedFile);
     const [busy, setBusy] = useState(false);
     const fetch = async () => {
         if (busy || !song) return;
@@ -61,6 +62,12 @@ export default function SongInfoScreen() {
                             label="File"
                             value={song.filename || song.uri}
                         />
+                        {song.lyricsSource ? (
+                            <DetailRow
+                                label="Lyrics source"
+                                value={`${song.lyricsSource}${song.lyricsFetchedAt ? ` · ${new Date(song.lyricsFetchedAt).toLocaleDateString()}` : ""}`}
+                            />
+                        ) : null}
                     </View>
                     {song.album ? (
                         <ActionButton
@@ -125,6 +132,33 @@ export default function SongInfoScreen() {
                             })
                         }
                     />
+                    {song.localUri ? (
+                        <ActionButton
+                            label="Delete downloaded file"
+                            icon="trash-outline"
+                            variant="secondary"
+                            onPress={() =>
+                                Alert.alert(
+                                    "Delete downloaded file?",
+                                    "This removes the downloaded copy. The original library track will remain.",
+                                    [
+                                        { text: "Cancel", style: "cancel" },
+                                        {
+                                            text: "Delete",
+                                            style: "destructive",
+                                            onPress: () =>
+                                                void deleteDownloadedFile(song.id || "").catch(() =>
+                                                    Alert.alert(
+                                                        "Could not delete file",
+                                                        "The downloaded copy could not be removed.",
+                                                    ),
+                                                ),
+                                        },
+                                    ],
+                                )
+                            }
+                        />
+                    ) : null}
                 </>
             )}
         </SongScreen>

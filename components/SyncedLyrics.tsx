@@ -1,5 +1,5 @@
 import { muzaloTheme as c } from "@/constants/tokens";
-import { hasTimestamps, parseLRC } from "@/tools/parseLyrics";
+import { applyLyricsOffset, hasTimestamps, parseLRC } from "@/tools/parseLyrics";
 import { usePlayerStore } from "@/tools/store/usePlayerStore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
@@ -7,11 +7,13 @@ import { useProgress } from "react-native-track-player";
 export default function SyncedLyrics({
   lrc,
   toggleShowLyrics,
+  offset = 0,
 }: {
   lrc: string;
   toggleShowLyrics: () => void;
+  offset?: number;
 }) {
-  const lyrics = useMemo(() => parseLRC(lrc), [lrc]);
+  const lyrics = useMemo(() => applyLyricsOffset(parseLRC(lrc), offset || 0), [lrc, offset]);
   const synced = hasTimestamps(lrc);
   const seek = usePlayerStore((s) => s.handleChangeSongPosition);
   const { position } = useProgress(100);

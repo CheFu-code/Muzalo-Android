@@ -7,6 +7,16 @@ let registered = false;
 export default async function playbackService() {
   if (registered) return;
   registered = true;
+  // A restarted service must not keep a stale native queue. The hydrated
+  // player store restores it when the application process is ready.
+  try {
+    if (typeof (TrackPlayer as { reset?: () => Promise<void> }).reset === "function")
+      await TrackPlayer.reset();
+    usePlayerStore.getState().clearTransientPlaybackState?.();
+  } catch {
+    // The player may not have been initialized yet; the app will restore it.
+  }
+  let interruptedPlayback = false;
   const run = (action: () => Promise<unknown>) => {
     void action().catch((error) => usePlayerStore.getState().reportPlaybackError(String(error)));
   };
@@ -21,7 +31,12 @@ export default async function playbackService() {
   TrackPlayer.addEventListener(Event.RemoteJumpBackward, () => usePlayerStore.getState().handlebackwardPosition());
   TrackPlayer.addEventListener(Event.RemoteDuck, ({ paused, permanent }) => run(async () => {
     if (paused || permanent) {
+      interruptedPlayback =
+        !permanent && usePlayerStore.getState().isPlaying;
       await usePlayerStore.getState().pausePlayback();
+    } else if (interruptedPlayback) {
+      interruptedPlayback = false;
+      await usePlayerStore.getState().resumePlayback();
     }
   }));
   TrackPlayer.addEventListener(Event.PlaybackState, ({ state }) => {

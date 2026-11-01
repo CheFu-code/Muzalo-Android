@@ -54,9 +54,7 @@ async function configureDatabase(db: SQLiteDatabase) {
       date INTEGER,
       year INTEGER,
       lyrics TEXT,
-      syncedLyrics TEXT,
-      playCount INTEGER DEFAULT 0,
-      lastPlayedAt INTEGER DEFAULT 0
+      syncedLyrics TEXT
     );
 
     CREATE TABLE IF NOT EXISTS playlists (
@@ -83,6 +81,9 @@ async function configureDatabase(db: SQLiteDatabase) {
     ["localUri", "TEXT DEFAULT NULL"],
     ["playCount", "INTEGER DEFAULT 0"],
     ["lastPlayedAt", "INTEGER DEFAULT 0"],
+    ["lyricsSource", "TEXT"],
+    ["lyricsFetchedAt", "INTEGER"],
+    ["lyricsOffset", "REAL DEFAULT 0"],
   ]) {
     if (!columns.some((column) => column.name === name)) {
       await db.execAsync(`ALTER TABLE songs ADD COLUMN ${name} ${definition};`);
@@ -317,14 +318,21 @@ export async function addLyrics(
   songId: string,
   lyrics: string,
   syncedLyrics: string | null,
+  source = "manual",
 ) {
   const db = await getDB();
   const result = await db.runAsync(
-    "UPDATE songs SET lyrics = ?, syncedLyrics = ? WHERE id = ?",
-    [lyrics, syncedLyrics, songId],
+    "UPDATE songs SET lyrics = ?, syncedLyrics = ?, lyricsSource = ?, lyricsFetchedAt = ? WHERE id = ?",
+    [lyrics, syncedLyrics, source, Date.now(), songId],
   );
   if (!result.changes)
     throw new Error("The track no longer exists in your library.");
+}
+
+export async function updateLyricsOffset(id: string, offset: number): Promise<void> {
+  const db = await getDB();
+  const result = await db.runAsync("UPDATE songs SET lyricsOffset = ? WHERE id = ?", [offset, id]);
+  if (!result.changes) throw new Error("The track no longer exists in your library.");
 }
 
 export async function incrementPlayCountInDB(
@@ -588,7 +596,7 @@ export async function getFavoriteSongs(): Promise<Song[]> {
   return songs;
 }
 
-export async function setLocalURI(localUri: string, songId: string) {
+export async function setLocalURI(localUri: string | null, songId: string) {
   const db = await getDB();
   await db.runAsync(`UPDATE songs SET localUri = ? WHERE id = ?`, [
     localUri,

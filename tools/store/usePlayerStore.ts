@@ -19,6 +19,7 @@ import {
   removeSongFromPlaylist,
   setLocalURI,
   updateSongSyncedLyrics,
+  updateLyricsOffset,
 } from "@/tools/db";
 import { Playlist, Song } from "@/types/types";
 import { Buffer } from "buffer";
@@ -27,7 +28,7 @@ import uuid from "react-native-uuid";
 import { toast } from "sonner-native";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { downloadSongWithSAF } from "../downloadManager";
+import { deleteDownloadedFile, downloadSongWithSAF, DownloadOptions } from "../downloadManager";
 import { getAudioExtension } from "../audioFormats";
 import { updateMusicWidget } from "../services/widgetService";
 
@@ -50,6 +51,7 @@ export type PlayerStore = {
   syncActiveTrack: (id?: string) => Promise<void>;
   syncPlaybackProgress: () => Promise<void>;
   reportPlaybackError: (message?: string) => void;
+  clearTransientPlaybackState: () => void;
   dismissPlaybackError: () => void;
   resumePlayback: () => Promise<boolean>;
   pausePlayback: () => Promise<boolean>;
@@ -115,7 +117,7 @@ export type PlayerStore = {
   ) => Promise<boolean>;
   setFiles: (files: Song[]) => void;
   setAllFiles: (files: Song[]) => void;
-  setLyrics: (id: string, lyrics: string, syncedLyrics?: string) => Promise<void>;
+  setLyrics: (id: string, lyrics: string, syncedLyrics?: string, source?: string) => Promise<void>;
   editSong: (
     id: string,
     title: string,
@@ -125,11 +127,13 @@ export type PlayerStore = {
   ) => Promise<void>;
 
   updateFileLocalUri: (id: string | null | undefined, localUri: string) => void;
-  downloadFile: (id: string, remoteUri: string) => void;
+  downloadFile: (id: string, remoteUri: string, options?: DownloadOptions) => Promise<void>;
+  deleteDownloadedFile: (id: string) => Promise<void>;
   incrementPlayCount: (id: string | null | undefined) => void;
   getSongInfo: (id: string) => Promise<Song | null>;
   getAlbum: (id: string) => Promise<Song[] | null>;
   updateSongSyncedLyrics: (id: string, syncedLyrics: string) => Promise<void>;
+  updateLyricsOffset: (id: string, offset: number) => Promise<void>;
 };
 
 export const playerSessionStorage = createPlayerStorage();
@@ -149,6 +153,8 @@ export const usePlayerStore = create<PlayerStore>()(
       isLoading: false,
       playbackBusy: false,
       playbackError: null,
+      clearTransientPlaybackState: () =>
+        set({ isPlaying: false, position: 0, duration: 0, playbackError: null }),
       shuffle: false,
       showLyrics: true,
       repeat: "off",
@@ -204,7 +210,14 @@ export const usePlayerStore = create<PlayerStore>()(
         set((s) => ({
           files: s.files.map((f) => (f.id === id ? { ...f, localUri } : f)),
         })),
-      downloadFile: async (id: string, remoteUri) => {
+      updateLyricsOffset: async (id, offset) => {
+        await updateLyricsOffset(id, offset);
+        set((state) => ({
+          currentSong: state.currentSong?.id === id ? { ...state.currentSong, lyricsOffset: offset } : state.currentSong,
+          files: state.files.map((song) => song.id === id ? { ...song, lyricsOffset: offset } : song),
+        }));
+      },
+      downloadFile: async (id: string, remoteUri, options) => {
         const file = get().files.find((f) => f.id === id);
         if (!file) return;
 
@@ -216,7 +229,8 @@ export const usePlayerStore = create<PlayerStore>()(
           getAudioExtension(file.uri);
         const localUri = await downloadSongWithSAF(
           remoteUri,
-          `${safeTitle}${extension ?? ""}`
+          `${safeTitle}${extension ?? ""}`,
+          options,
         );
 
         if (localUri) {
@@ -234,9 +248,29 @@ export const usePlayerStore = create<PlayerStore>()(
           );
         }
       },
+      deleteDownloadedFile: async (id: string) => {
+        const file = get().files.find((entry) => entry.id === id);
+        if (!file?.localUri) return;
+        await deleteDownloadedFile(file.localUri);
+        await setLocalURI(null, id);
+        await removeSongFromPlaylist("downloads", id);
+        set((state) => ({
+          files: state.files.map((entry) =>
+            entry.id === id ? { ...entry, localUri: undefined } : entry,
+          ),
+          currentSong:
+            state.currentSong?.id === id
+              ? { ...state.currentSong, localUri: undefined }
+              : state.currentSong,
+          queue: state.queue.map((entry) =>
+            entry.id === id ? { ...entry, localUri: undefined } : entry,
+          ),
+        }));
+        toast.success("Downloaded file deleted.");
+      },
 
       ...createPlayerActions(set, get),
-      setLyrics: async (id: string, lyrics: string, syncedLyrics?: string) => {
+      setLyrics: async (id: string, lyrics: string, syncedLyrics?: string, source?: string) => {
         if (!id) {
           throw new Error("A track is required to save lyrics.");
         }
@@ -250,7 +284,8 @@ export const usePlayerStore = create<PlayerStore>()(
             ? syncedLyrics
             : (song?.syncedLyrics ?? null);
 
-        await addLyrics(id, lyrics, synced);
+        if (source === undefined) await addLyrics(id, lyrics, synced);
+        else await addLyrics(id, lyrics, synced, source);
         toast.success(`Lyrics added!`);
 
         set((state) => ({
@@ -513,4 +548,3 @@ export const usePlaylistStore = create<{
     toast.success("Playback history cleared!");
   },
 }));
-

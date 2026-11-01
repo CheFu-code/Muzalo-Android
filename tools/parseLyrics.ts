@@ -1,4 +1,6 @@
 export type LyricLine = { time: number; text: string };
+export const applyLyricsOffset = (lines: LyricLine[], offsetSeconds: number) =>
+  lines.map((line) => ({ ...line, time: Math.max(0, line.time + (Number.isFinite(offsetSeconds) ? offsetSeconds : 0)) }));
 export const hasTimestamps = (value: string) =>
   /\[\d+:\d{1,2}(?:\.\d+)?\]/.test(value);
 

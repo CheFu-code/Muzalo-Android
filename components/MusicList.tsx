@@ -13,7 +13,7 @@ import { Song } from "@/types/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { InteractionManager, Linking, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, InteractionManager, Linking, Text, TextInput, TouchableOpacity, View } from "react-native";
 import {
     SafeAreaView,
     useSafeAreaInsets,
@@ -30,7 +30,16 @@ const MusicList = ({ currentSong }: Props) => {
     const files = usePlayerStore((s) => s.files);
     const preferences = useLibraryPreferences();
     const { scanning, access, canAskAgain, error } = useLibraryStore();
-    const scan = () => { void syncLibrary({ requestPermission: true }); };
+    const scan = () => {
+        Alert.alert(
+            "Allow access to your music?",
+            "Muzalo needs audio access to find supported music already stored on this device. Your music files are not uploaded by the library scan.",
+            [
+                { text: "Not now", style: "cancel" },
+                { text: "Continue", onPress: () => void syncLibrary({ requestPermission: true }) },
+            ],
+        );
+    };
     const [search, setSearch] = useState("");
     const searchInput = useRef<TextInput>(null);
     const consumedSearch = useRef<string | null>(null);

@@ -2,6 +2,7 @@ import { AppIcon, Screen, ScreenHeader, ui } from "@/components/ui";
 import { muzaloTheme as c } from "@/constants/tokens";
 import { useLibraryStore } from "@/tools/store/useLibraryStore";
 import { syncLibrary } from "@/tools/syncLibrary";
+import { getStorageUsage } from "@/tools/downloadManager";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import {
@@ -14,6 +15,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useEffect, useState } from "react";
 import { Pressable } from "react-native-gesture-handler";
 
 function SettingsRow({
@@ -57,8 +59,16 @@ function SettingsRow({
     </Pressable>
   );
 }
+function formatBytes(bytes: number) {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes, unit = 0;
+  while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++; }
+  return `${value.toFixed(unit ? 1 : 0)} ${units[unit]}`;
+}
 
 export default function SettingsScreen() {
+  const [storage, setStorage] = useState<{ usedBytes?: number; freeBytes?: number }>({});
+  useEffect(() => { void getStorageUsage().then(setStorage).catch(() => undefined); }, []);
   const scanning = useLibraryStore((state) => state.scanning);
   const version = Constants.expoConfig?.version;
   const build =
@@ -111,7 +121,17 @@ export default function SettingsScreen() {
               indicator="none"
               busy={scanning}
               onPress={() => {
-                void syncLibrary({ requestPermission: true });
+                Alert.alert(
+                  "Allow access to your music?",
+                  "Muzalo needs audio access to find supported music already stored on this device. Your music files are not uploaded by the library scan.",
+                  [
+                    { text: "Not now", style: "cancel" },
+                    {
+                      text: "Continue",
+                      onPress: () => void syncLibrary({ requestPermission: true }),
+                    },
+                  ],
+                );
               }}
             />
           )}
@@ -134,6 +154,11 @@ export default function SettingsScreen() {
             Sort songs and choose which folders appear using the library
             controls beside Your music.
           </Text>
+          {storage.usedBytes != null && storage.freeBytes != null && (
+            <Text style={[ui.muted, { fontSize: 12, marginTop: 8 }]}>
+              Storage used: {formatBytes(storage.usedBytes)} · Free: {formatBytes(storage.freeBytes)}
+            </Text>
+          )}
         </View>
         <View>
           <Text accessibilityRole="header" style={ui.label}>

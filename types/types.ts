@@ -15,6 +15,9 @@ export interface Song {
   isFavorite?: boolean;
   lyrics?: string | null;
   syncedLyrics?: string | null;
+  lyricsSource?: string | null;
+  lyricsFetchedAt?: number | null;
+  lyricsOffset?: number;
   size?: number;
   playCount?: number;
   lastPlayedAt?: number;

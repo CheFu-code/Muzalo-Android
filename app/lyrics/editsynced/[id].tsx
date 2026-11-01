@@ -16,11 +16,14 @@ export default function EditSyncedLyricsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { song, loading, error } = useSongDetails(id);
   const saveLyrics = usePlayerStore((s) => s.updateSongSyncedLyrics);
+  const updateOffset = usePlayerStore((s) => s.updateLyricsOffset);
   const router = useRouter();
   const [lines, setLines] = useState<LyricLine[]>([]);
   const [busy, setBusy] = useState(false);
+  const [offset, setOffset] = useState(0);
   useEffect(() => {
     if (song) setLines(parseLRC(song.syncedLyrics || song.lyrics || ""));
+    if (song) setOffset(song.lyricsOffset || 0);
   }, [song]);
   const save = async () => {
     if (!id || !lines.length || busy) return;
@@ -87,6 +90,11 @@ export default function EditSyncedLyricsScreen() {
           router.push({ pathname: "/lyrics/edit/[id]", params: { id } })
         }
       />
+      <Text style={ui.muted}>Timing offset: {offset > 0 ? "+" : ""}{offset.toFixed(1)}s</Text>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        <ActionButton label="−0.5s" icon="remove-outline" variant="secondary" onPress={() => setOffset((value) => value - 0.5)} />
+        <ActionButton label="+0.5s" icon="add-outline" variant="secondary" onPress={() => setOffset((value) => value + 0.5)} />
+      </View>
       <ActionButton
         label="Copy text from plain lyrics"
         icon="copy-outline"
@@ -117,6 +125,17 @@ export default function EditSyncedLyricsScreen() {
         disabled={!lines.length}
         loading={busy}
         onPress={save}
+      />
+      <ActionButton
+        label="Save timing offset"
+        icon="time-outline"
+        variant="secondary"
+        loading={busy}
+        onPress={async () => {
+          if (!id || busy) return;
+          setBusy(true);
+          try { await updateOffset(id, offset); } catch { Alert.alert("Could not save offset", "Please try again."); } finally { setBusy(false); }
+        }}
       />
     </SongScreen>
   );

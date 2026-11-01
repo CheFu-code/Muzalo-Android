@@ -19,12 +19,13 @@ import {
 } from "@/components/ui";
 import { muzaloTheme as c } from "@/constants/tokens";
 import { handleFetchingLyrics } from "@/tools/handleFetchingLyrics";
+import type { DownloadProgress } from "@/tools/downloadManager";
 import { usePlayerStore, usePlaylistStore } from "@/tools/store/usePlayerStore";
 import { Ionicons } from "@expo/vector-icons";
 import coverImage from "@/assets/placeholder2.jpg";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
     Alert,
     Image,
@@ -47,6 +48,8 @@ export default function PlayingScreen() {
     const favorite = usePlaylistStore((s) => s.isFavorite(song?.id || ""));
     const [fetching, setFetching] = useState(false);
     const [downloading, setDownloading] = useState(false);
+    const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+    const downloadController = useRef<AbortController | null>(null);
     const compact = contentHeight > 0 && contentHeight < 620;
     const size = Math.max(
         0,
@@ -64,14 +67,25 @@ export default function PlayingScreen() {
         }
     };
     const handleDownload = async () => {
-        if (!song?.id || downloading) return;
+        if (!song?.id) return;
+        if (downloading) {
+            downloadController.current?.abort();
+            return;
+        }
         setDownloading(true);
+        setDownloadProgress({ receivedBytes: 0 });
+        downloadController.current = new AbortController();
         try {
-            await download(song.id, song.uri);
+            await download(song.id, song.uri, {
+                signal: downloadController.current.signal,
+                onProgress: setDownloadProgress,
+            });
         } catch {
             Alert.alert("Download failed", "Please try again.");
         } finally {
             setDownloading(false);
+            setDownloadProgress(null);
+            downloadController.current = null;
         }
     };
     return (
@@ -180,6 +194,7 @@ export default function PlayingScreen() {
                                             ""
                                         }
                                         toggleShowLyrics={toggleLyrics}
+                                        offset={song.lyricsOffset}
                                     />
                                 ) : (
                                     <View
@@ -402,17 +417,17 @@ export default function PlayingScreen() {
                             <View style={{ alignItems: "center" }}>
                                 <IconButton
                                     icon="download-outline"
-                                    label={
-                                        downloading
-                                            ? "Downloading"
-                                            : "Download track"
-                                    }
-                                    disabled={downloading || !song.id}
+                                    label={downloading ? "Cancel download" : "Download track"}
+                                    disabled={!song.id}
                                     onPress={handleDownload}
                                 />
                                 {!compact && (
                                     <Text numberOfLines={1} style={ui.label}>
-                                        Download
+                                        {downloading && downloadProgress?.fraction != null
+                                            ? `${Math.round(downloadProgress.fraction * 100)}%`
+                                            : downloading
+                                                ? "Downloading…"
+                                                : "Download"}
                                     </Text>
                                 )}
                             </View>
