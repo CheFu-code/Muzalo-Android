@@ -15,7 +15,11 @@ export default function PlayerBinder() {
   const restored = useRef(false);
 
   useEffect(() => {
-    updateMusicWidget(currentSong, isPlaying);
+    try {
+      updateMusicWidget(currentSong, isPlaying);
+    } catch (error) {
+      console.warn("Could not update music widget", error);
+    }
   }, [currentSong, isPlaying]);
 
   useEffect(() => {
@@ -73,9 +77,17 @@ export default function PlayerBinder() {
   }, []);
 
   useEffect(() => {
-    (async () => {
-      await TrackPlayer.setVolume(volume);
-    })();
+    let active = true;
+    void setupPlayer()
+      .then(async () => {
+        if (active) await TrackPlayer.setVolume(volume);
+      })
+      .catch((error) => {
+        console.warn("Could not apply playback volume", error);
+      });
+    return () => {
+      active = false;
+    };
   }, [volume]);
 
   return null;
