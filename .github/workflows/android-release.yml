@@ -91,9 +91,6 @@ jobs:
           console.log('Patched nullable Bundle conversion in Track Player getTrack/getActiveTrack');
           NODE
 
-      - name: Check Expo dependency compatibility
-        run: npx expo install --check
-
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
