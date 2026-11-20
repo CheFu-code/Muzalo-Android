@@ -36,7 +36,7 @@
                 "android.permission.VIBRATE"
             ],
             "package": "co.za.chefu.muzalo",
-            "versionCode": 3,
+            "versionCode": 4,
             "adaptiveIcon": {
                 "foregroundImage": "./assets/images/adaptive-icon.png",
                 "backgroundColor": "#000000"
